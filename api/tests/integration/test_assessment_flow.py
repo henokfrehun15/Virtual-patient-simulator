@@ -171,6 +171,17 @@ def test_full_assessment_flow(monkeypatch) -> None:
     monkeypatch.setattr(scoring_module, "get_llm_router", lambda user_id=None: matcher)
     monkeypatch.setattr(completion_module, "get_llm_router", lambda user_id=None: feedback)
 
+    def fake_request_completion(db, session):
+        if session.status in ("completed", "completing"):
+            return session
+        session.status = "completing"
+        session.completed_reason = "student_requested"
+        db.commit()
+        db.refresh(session)
+        return session
+
+    monkeypatch.setattr(sessions_routes, "request_completion", fake_request_completion)
+
     with TestClient(app) as client:
         session_id, headers, user_id = _start_session(client, unique, scenario_id)
 

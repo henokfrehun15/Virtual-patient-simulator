@@ -2,6 +2,8 @@ import type { ReactElement } from "react";
 import { Navigate, createBrowserRouter } from "react-router-dom";
 
 import { useAuth } from "../features/auth/AuthContext";
+import { CoursePage } from "../pages/CoursePage";
+import { CoursesPage } from "../pages/CoursesPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { LoginPage } from "../pages/LoginPage";
 import { RegisterPage } from "../pages/RegisterPage";
@@ -26,6 +28,22 @@ export const router = createBrowserRouter([
     element: (
       <RequireAuth>
         <DashboardPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/courses",
+    element: (
+      <RequireAuth>
+        <CoursesPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/courses/:courseId",
+    element: (
+      <RequireAuth>
+        <CoursePage />
       </RequireAuth>
     ),
   },

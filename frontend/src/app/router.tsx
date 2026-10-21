@@ -8,6 +8,7 @@ import { DashboardPage } from "../pages/DashboardPage";
 import { DiseasePage } from "../pages/DiseasePage";
 import { LoginPage } from "../pages/LoginPage";
 import { RegisterPage } from "../pages/RegisterPage";
+import { ScenarioPage } from "../pages/ScenarioPage";
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const { user, loading } = useAuth();
@@ -53,6 +54,14 @@ export const router = createBrowserRouter([
     element: (
       <RequireAuth>
         <DiseasePage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/scenarios/:scenarioId",
+    element: (
+      <RequireAuth>
+        <ScenarioPage />
       </RequireAuth>
     ),
   },

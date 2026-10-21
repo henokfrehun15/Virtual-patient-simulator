@@ -6,6 +6,7 @@ import {
   type DiseaseVersionDetail,
   type RubricItem,
 } from "../api/diseases";
+import { listDiseaseScenarios } from "../api/scenarios";
 
 function Chips({ items }: { items: string[] }) {
   return (
@@ -205,6 +206,17 @@ export function DiseasePage() {
     enabled: diseaseId !== undefined,
   });
 
+  const scenariosQuery = useQuery({
+    queryKey: ["diseases", diseaseId, "scenarios"],
+    queryFn: () => listDiseaseScenarios(diseaseId!),
+    enabled: diseaseId !== undefined,
+    refetchInterval: (query) => {
+      const items = query.state.data?.items ?? [];
+      if (items.length > 0) return false;
+      return query.state.dataUpdateCount > 20 ? false : 5000;
+    },
+  });
+
   if (diseaseQuery.isLoading) {
     return (
       <main className="page">
@@ -232,6 +244,34 @@ export function DiseasePage() {
       <header className="page-header">
         <h1>{disease.canonical_name}</h1>
       </header>
+
+      <section className="section-block">
+        <h3>Practice scenarios</h3>
+        {scenariosQuery.isLoading ? (
+          <p className="muted">Loading…</p>
+        ) : (scenariosQuery.data?.items.length ?? 0) === 0 ? (
+          <p className="muted">
+            Scenarios are generated automatically once the disease version is published.
+          </p>
+        ) : (
+          <div className="scenario-cards">
+            {scenariosQuery.data?.items.map((scenario) => (
+              <Link
+                key={scenario.id}
+                to={`/scenarios/${scenario.id}`}
+                className="scenario-card"
+              >
+                <span className={`badge badge-difficulty-${scenario.difficulty}`}>
+                  {scenario.difficulty}
+                </span>
+                <span className="scenario-card-title">{scenario.title}</span>
+                <span className="muted">≈ {scenario.estimated_duration_minutes} min</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
       {disease.latest_version === null ? (
         <p className="muted">No extracted versions yet.</p>
       ) : (

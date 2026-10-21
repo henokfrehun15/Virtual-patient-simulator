@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     max_diseases_per_material: int = 50
     profile_chunks_per_disease: int = 20
     max_evidence_text_chars: int = 2000
+    scenario_difficulties: str = "easy,medium,hard"
+    scenario_estimated_duration_minutes: int = 15
 
     object_storage_endpoint: str = ""
     object_storage_bucket: str = ""

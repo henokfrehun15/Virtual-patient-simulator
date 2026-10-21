@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -80,3 +81,39 @@ class RubricItemDraft(BaseModel):
 
 class RubricExtractionResult(BaseModel):
     items: list[RubricItemDraft] = Field(default_factory=list)
+
+
+class ScenarioDemographics(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    age: int = Field(ge=0, le=120)
+    sex: str = Field(min_length=1, max_length=30)
+    occupation: str | None = None
+
+
+class ScenarioExamination(BaseModel):
+    exam_name: str = Field(min_length=1, max_length=200)
+    findings: dict[str, Any] = Field(default_factory=dict)
+
+
+class ScenarioInvestigation(BaseModel):
+    test_name: str = Field(min_length=1, max_length=200)
+    result: dict[str, Any] = Field(default_factory=dict)
+    available: bool = True
+    cost_weight: int = Field(default=1, ge=1, le=10)
+
+
+class ScenarioGenerationResult(BaseModel):
+    demographics: ScenarioDemographics
+    chief_complaint: str = Field(min_length=1, max_length=300)
+    hpi: dict[str, Any] = Field(default_factory=dict)
+    pmh: list[str] = Field(default_factory=list)
+    medications: list[str] = Field(default_factory=list)
+    allergies: list[str] = Field(default_factory=list)
+    family_history: list[str] = Field(default_factory=list)
+    social_history: dict[str, Any] = Field(default_factory=dict)
+    ros: dict[str, Any] = Field(default_factory=dict)
+    red_flags: dict[str, bool] = Field(default_factory=dict)
+    communication_style: str = Field(min_length=1, max_length=500)
+    emotional_state: str = Field(min_length=1, max_length=300)
+    examinations: list[ScenarioExamination] = Field(default_factory=list)
+    investigations: list[ScenarioInvestigation] = Field(default_factory=list)

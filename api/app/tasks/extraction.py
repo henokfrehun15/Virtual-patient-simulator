@@ -32,6 +32,23 @@ def extract_clinical_content(self: Task, material_version_id: str) -> None:
         )
         raise self.retry(exc=exc, countdown=countdown)
 
+    try:
+        from app.services.scenario import (
+            configured_difficulties,
+            published_disease_version_ids_for_material,
+        )
+        from app.tasks.scenarios import generate_scenario
+
+        for disease_version_id in published_disease_version_ids_for_material(
+            uuid.UUID(material_version_id)
+        ):
+            for difficulty in configured_difficulties():
+                generate_scenario.delay(str(disease_version_id), difficulty)
+    except Exception:
+        logger.error(
+            "scenario_enqueue_failed", material_version_id=material_version_id
+        )
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:

@@ -12,6 +12,7 @@ from app.api.routes import (
     diseases,
     health,
     materials,
+    progress,
     scenarios,
     sessions,
 )
@@ -87,3 +88,4 @@ app.include_router(scenarios.router)
 app.include_router(scenarios.disease_router)
 app.include_router(sessions.router)
 app.include_router(settings_routes.router)
+app.include_router(progress.router)

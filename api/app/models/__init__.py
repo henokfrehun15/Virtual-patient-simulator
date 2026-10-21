@@ -1,7 +1,7 @@
 from app.models.base import Base
 from app.models.course import Course
 from app.models.disease import Disease, DiseaseSourceEvidence, DiseaseVersion
-from app.models.llm import AuditEvent, LlmRequest, PromptVersion
+from app.models.llm import AuditEvent, LlmRequest, PromptVersion, UserLLMSettings
 from app.models.material import DocumentChunk, DocumentPage, ExtractionJob, Material, MaterialVersion
 from app.models.message import Message
 from app.models.progress import UserProgress
@@ -48,5 +48,6 @@ __all__ = [
     "SessionReport",
     "SessionRubricResult",
     "User",
+    "UserLLMSettings",
     "UserProgress",
 ]

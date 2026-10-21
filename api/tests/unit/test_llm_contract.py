@@ -59,18 +59,9 @@ def test_router_generate_parses_and_validates(monkeypatch: pytest.MonkeyPatch) -
     from app.llm import router as router_module
 
     monkeypatch.setattr(router_module, "_record_llm_request", lambda **kwargs: None)
-    monkeypatch.setattr(
-        router_module, "get_settings", lambda: type("S", (), {
-            "llm_extraction_model": "test-model",
-            "llm_scenario_model": "",
-            "llm_patient_model": "",
-            "llm_scoring_model": "",
-            "llm_feedback_model": "",
-        })(),
-    )
 
     provider = StubProvider('{"diseases": [{"name": "Pneumonia", "source_pages": [1]}]}')
-    router = LLMRouter(provider)  # type: ignore[arg-type]
+    router = LLMRouter(provider, {"disease_extraction": "test-model"})  # type: ignore[arg-type]
 
     result = router.generate(
         "disease_extraction",
@@ -88,22 +79,35 @@ def test_router_generate_parses_and_validates(monkeypatch: pytest.MonkeyPatch) -
     assert provider.calls[0]["json_schema"]["additionalProperties"] is False
 
 
+def test_router_generate_returns_free_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.llm import router as router_module
+
+    monkeypatch.setattr(router_module, "_record_llm_request", lambda **kwargs: None)
+
+    provider = StubProvider("I have had a cough for three days.")
+    router = LLMRouter(provider, {"patient_roleplay": "test-model"})  # type: ignore[arg-type]
+
+    result = router.generate(
+        "patient_roleplay",
+        LLMRequest(
+            system="system",
+            user="user",
+            schema_model=None,
+            prompt_version="patient_roleplay:v1",
+        ),
+    )
+
+    assert result == "I have had a cough for three days."
+    assert provider.calls[0]["json_schema"] is None
+
+
 def test_router_rejects_schema_invalid_output(monkeypatch: pytest.MonkeyPatch) -> None:
     from app.llm import router as router_module
 
     monkeypatch.setattr(router_module, "_record_llm_request", lambda **kwargs: None)
-    monkeypatch.setattr(
-        router_module, "get_settings", lambda: type("S", (), {
-            "llm_extraction_model": "test-model",
-            "llm_scenario_model": "",
-            "llm_patient_model": "",
-            "llm_scoring_model": "",
-            "llm_feedback_model": "",
-        })(),
-    )
 
     provider = StubProvider('{"diseases": [{"bogus": true}]}')
-    router = LLMRouter(provider)  # type: ignore[arg-type]
+    router = LLMRouter(provider, {"disease_extraction": "test-model"})  # type: ignore[arg-type]
 
     with pytest.raises(AppError) as exc_info:
         router.generate(
@@ -118,19 +122,9 @@ def test_router_rejects_schema_invalid_output(monkeypatch: pytest.MonkeyPatch) -
     assert exc_info.value.code == "LLM_SCHEMA_INVALID"
 
 
-def test_router_requires_configured_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.llm import router as router_module
-
-    class EmptySettings:
-        llm_extraction_model = ""
-        llm_scenario_model = ""
-        llm_patient_model = ""
-        llm_scoring_model = ""
-        llm_feedback_model = ""
-
-    monkeypatch.setattr(router_module, "get_settings", lambda: EmptySettings())
-
-    router = LLMRouter(StubProvider("{}"))  # type: ignore[arg-type]
+def test_router_requires_configured_model() -> None:
+    provider = StubProvider("{}")
+    router = LLMRouter(provider, {})  # type: ignore[arg-type]
     with pytest.raises(AppError) as exc_info:
         router.model_for_task("disease_extraction")
     assert exc_info.value.code == "LLM_NOT_CONFIGURED"

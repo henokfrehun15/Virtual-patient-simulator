@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_ttl_seconds: int = 900
     jwt_refresh_ttl_seconds: int = 2592000
+    llm_settings_secret: str = ""
 
     anthropic_api_key: str = "replace-me"
     llm_extraction_model: str = ""
@@ -62,6 +63,13 @@ class Settings(BaseSettings):
     session_start_rate_limit_count: int = 10
     session_start_rate_limit_window_seconds: int = 60
     turn_lock_ttl_seconds: int = 300
+    max_examinations_per_session: int = 20
+    max_investigations_per_session: int = 20
+    scoring_candidate_count: int = 10
+    scoring_max_items_per_call: int = 25
+    scoring_wait_timeout_seconds: int = 120
+    critical_miss_penalty: float = 10.0
+    progress_window_sessions: int = 10
 
     object_storage_endpoint: str = ""
     object_storage_bucket: str = ""

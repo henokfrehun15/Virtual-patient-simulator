@@ -20,7 +20,7 @@ from app.llm.schemas import (
     RubricExtractionResult,
 )
 from app.models.disease import Disease, DiseaseSourceEvidence, DiseaseVersion
-from app.models.material import DocumentChunk, DocumentPage, ExtractionJob, MaterialVersion
+from app.models.material import DocumentChunk, DocumentPage, ExtractionJob, Material, MaterialVersion
 from app.models.rubric import DiagnosisOption, RubricItem
 from app.services.content_validation import validate_disease_content
 
@@ -83,6 +83,8 @@ def run_clinical_content(material_version_id: uuid.UUID) -> None:
 
 def _run_pipeline(db, version: MaterialVersion, job: ExtractionJob) -> None:
     settings = get_settings()
+    material = db.get(Material, version.material_id)
+    owner_user_id = material.created_by if material is not None else None
 
     chunks = (
         db.scalars(
@@ -108,7 +110,7 @@ def _run_pipeline(db, version: MaterialVersion, job: ExtractionJob) -> None:
 
     _backfill_chunk_embeddings(db, chunks)
 
-    discovered = _discover_diseases(chunks)
+    discovered = _discover_diseases(chunks, owner_user_id)
     if not discovered:
         job.status = "succeeded"
         job.completed_at = datetime.now(timezone.utc)
@@ -130,7 +132,7 @@ def _run_pipeline(db, version: MaterialVersion, job: ExtractionJob) -> None:
     errors: list[str] = []
     for disease_draft in capped:
         try:
-            _process_disease(db, version, disease_draft, page_count)
+            _process_disease(db, version, disease_draft, page_count, owner_user_id)
         except Exception as exc:
             logger.exception(
                 "disease_processing_failed",
@@ -200,9 +202,11 @@ def _backfill_chunk_embeddings(db, chunks: list[DocumentChunk]) -> None:
     logger.info("chunk_embeddings_backfilled", count=len(missing))
 
 
-def _discover_diseases(chunks: list[DocumentChunk]) -> list[DiscoveredDisease]:
+def _discover_diseases(
+    chunks: list[DocumentChunk], owner_user_id: uuid.UUID | None
+) -> list[DiscoveredDisease]:
     settings = get_settings()
-    router = get_llm_router()
+    router = get_llm_router(owner_user_id)
     merged: dict[str, DiscoveredDisease] = {}
 
     for batch in _batched(chunks, settings.discovery_chunks_per_call):
@@ -298,9 +302,10 @@ def _process_disease(
     material_version: MaterialVersion,
     discovered: DiscoveredDisease,
     page_count: int,
+    owner_user_id: uuid.UUID | None,
 ) -> DiseaseVersion:
     settings = get_settings()
-    router = get_llm_router()
+    router = get_llm_router(owner_user_id)
 
     chunks = _relevant_chunks(db, material_version.id, discovered)
 

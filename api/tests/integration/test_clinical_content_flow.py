@@ -139,7 +139,7 @@ def test_clinical_content_pipeline_publishes_disease(pdf_bytes: bytes, monkeypat
     fake = make_fake_router()
     monkeypatch.setattr(ingestion_service, "enqueue_extraction", lambda version_id: None)
     monkeypatch.setattr(materials_routes, "enqueue_extraction", lambda version_id: None)
-    monkeypatch.setattr(clinical_content_module, "get_llm_router", lambda: fake)
+    monkeypatch.setattr(clinical_content_module, "get_llm_router", lambda user_id=None: fake)
 
     unique = uuid.uuid4().hex[:8]
     with TestClient(app) as client:
@@ -184,7 +184,7 @@ def test_clinical_content_validation_failure_keeps_draft(pdf_bytes: bytes, monke
     fake = make_fake_router(empty=True)
     monkeypatch.setattr(ingestion_service, "enqueue_extraction", lambda version_id: None)
     monkeypatch.setattr(materials_routes, "enqueue_extraction", lambda version_id: None)
-    monkeypatch.setattr(clinical_content_module, "get_llm_router", lambda: fake)
+    monkeypatch.setattr(clinical_content_module, "get_llm_router", lambda user_id=None: fake)
 
     unique = uuid.uuid4().hex[:8]
     with TestClient(app) as client:

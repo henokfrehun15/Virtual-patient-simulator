@@ -10,7 +10,7 @@ from app.llm.prompts import scenario as scenario_prompts
 from app.llm.router import LLMRequest, get_llm_router
 from app.llm.schemas import ScenarioGenerationResult
 from app.models.disease import DiseaseSourceEvidence, DiseaseVersion
-from app.models.material import DocumentChunk, MaterialVersion
+from app.models.material import DocumentChunk, Material, MaterialVersion
 from app.models.scenario import (
     Scenario,
     ScenarioExamination,
@@ -64,6 +64,19 @@ def scenario_title(state: dict) -> str:
     return f"Patient with {complaint}"
 
 
+def _resolve_owner_user_id(db, disease_version_id: uuid.UUID) -> uuid.UUID | None:
+    return db.scalar(
+        select(Material.created_by)
+        .join(MaterialVersion, MaterialVersion.material_id == Material.id)
+        .join(DocumentChunk, DocumentChunk.material_version_id == MaterialVersion.id)
+        .join(
+            DiseaseSourceEvidence, DiseaseSourceEvidence.chunk_id == DocumentChunk.id
+        )
+        .where(DiseaseSourceEvidence.disease_version_id == disease_version_id)
+        .limit(1)
+    )
+
+
 def run_scenario_generation(disease_version_id: uuid.UUID, difficulty: str) -> None:
     if difficulty not in DIFFICULTIES:
         logger.error("scenario_invalid_difficulty", difficulty=difficulty)
@@ -107,7 +120,8 @@ def run_scenario_generation(disease_version_id: uuid.UUID, difficulty: str) -> N
                 logger.info("scenario_skipped_exists", scenario_id=str(existing.id))
                 return
 
-            router = get_llm_router()
+            owner_user_id = _resolve_owner_user_id(db, disease_version.id)
+            router = get_llm_router(owner_user_id)
             seed = uuid.uuid4().hex
             generation = router.generate(
                 "scenario_generation",

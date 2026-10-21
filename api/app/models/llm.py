@@ -5,7 +5,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Text, UniqueConst
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base, UUIDMixin, utcnow
+from app.models.base import Base, TimestampMixin, UUIDMixin, utcnow
 
 
 class PromptVersion(UUIDMixin, Base):
@@ -51,3 +51,18 @@ class AuditEvent(UUIDMixin, Base):
     resource_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     meta: Mapped[dict | None] = mapped_column("metadata", JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class UserLLMSettings(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "user_llm_settings"
+    __table_args__ = (UniqueConstraint("user_id", name="uq_user_llm_settings_user"),)
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    api_key_encrypted: Mapped[str | None] = mapped_column(Text)
+    extraction_model: Mapped[str | None] = mapped_column(Text)
+    scenario_model: Mapped[str | None] = mapped_column(Text)
+    patient_model: Mapped[str | None] = mapped_column(Text)
+    scoring_model: Mapped[str | None] = mapped_column(Text)
+    feedback_model: Mapped[str | None] = mapped_column(Text)

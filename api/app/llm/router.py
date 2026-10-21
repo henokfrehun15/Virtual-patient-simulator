@@ -7,6 +7,7 @@ from functools import lru_cache
 from typing import Any
 
 import pydantic
+from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.database import SessionLocal
@@ -14,8 +15,20 @@ from app.core.errors import AppError
 from app.core.logging import get_logger
 from app.llm.provider import AnthropicProvider, ProviderError
 from app.models.llm import LlmRequest as LlmRequestModel
+from app.models.llm import UserLLMSettings
 
 logger = get_logger("app.llm.router")
+
+TASK_MODEL_KEYS = {
+    "disease_extraction": "extraction_model",
+    "rubric_extraction": "extraction_model",
+    "scenario_generation": "scenario_model",
+    "patient_roleplay": "patient_model",
+    "rubric_matching": "scoring_model",
+    "diagnosis_normalization": "scoring_model",
+    "feedback_generation": "feedback_model",
+    "longitudinal_feedback": "feedback_model",
+}
 
 
 @dataclass
@@ -70,22 +83,12 @@ def _strictify(node: Any) -> Any:
 
 
 class LLMRouter:
-    def __init__(self, provider: AnthropicProvider) -> None:
+    def __init__(self, provider: AnthropicProvider, models: dict[str, str]) -> None:
         self._provider = provider
+        self._models = models
 
     def model_for_task(self, task: str) -> str:
-        settings = get_settings()
-        mapping = {
-            "disease_extraction": settings.llm_extraction_model,
-            "rubric_extraction": settings.llm_extraction_model,
-            "scenario_generation": settings.llm_scenario_model,
-            "patient_roleplay": settings.llm_patient_model,
-            "rubric_matching": settings.llm_scoring_model,
-            "diagnosis_normalization": settings.llm_scoring_model,
-            "feedback_generation": settings.llm_feedback_model,
-            "longitudinal_feedback": settings.llm_feedback_model,
-        }
-        model = mapping.get(task)
+        model = self._models.get(task)
         if not model:
             raise AppError(
                 "LLM_NOT_CONFIGURED",
@@ -93,6 +96,29 @@ class LLMRouter:
                 status_code=503,
             )
         return model
+
+    def configured_models(self) -> list[str]:
+        return sorted({model for model in self._models.values() if model})
+
+    def test_models(self) -> list[dict]:
+        results: list[dict] = []
+        for model in self.configured_models():
+            try:
+                self._provider.complete(
+                    model=model,
+                    system="You are a connectivity test.",
+                    user="Reply with the single word OK.",
+                    max_tokens=16,
+                    json_schema=None,
+                )
+                results.append({"model": model, "ok": True, "error": None})
+            except AppError as exc:
+                results.append({"model": model, "ok": False, "error": exc.code})
+            except ProviderError as exc:
+                results.append({"model": model, "ok": False, "error": exc.error_code})
+            except Exception as exc:
+                results.append({"model": model, "ok": False, "error": repr(exc)})
+        return results
 
     def generate(self, task: str, request: LLMRequest) -> pydantic.BaseModel | str:
         model = self.model_for_task(task)
@@ -227,15 +253,65 @@ def _record_llm_request(
         logger.warning("llm_request_record_failed", task=task)
 
 
-@lru_cache
-def get_llm_router() -> LLMRouter:
+def _load_user_llm_settings(user_id: uuid.UUID | None) -> UserLLMSettings | None:
+    if user_id is None:
+        return None
+    try:
+        with SessionLocal() as db:
+            return db.scalar(
+                select(UserLLMSettings).where(UserLLMSettings.user_id == user_id)
+            )
+    except Exception:
+        return None
+
+
+def _build_models(row: UserLLMSettings | None) -> dict[str, str]:
     settings = get_settings()
-    api_key = settings.anthropic_api_key
-    if not api_key or api_key == "replace-me":
-        api_key = "not-configured"
+    values = {
+        "extraction_model": (row.extraction_model if row is not None else None)
+        or settings.llm_extraction_model,
+        "scenario_model": (row.scenario_model if row is not None else None)
+        or settings.llm_scenario_model,
+        "patient_model": (row.patient_model if row is not None else None)
+        or settings.llm_patient_model,
+        "scoring_model": (row.scoring_model if row is not None else None)
+        or settings.llm_scoring_model,
+        "feedback_model": (row.feedback_model if row is not None else None)
+        or settings.llm_feedback_model,
+    }
+    return {task: values[key] for task, key in TASK_MODEL_KEYS.items()}
+
+
+def _resolve_api_key(row: UserLLMSettings | None) -> str | None:
+    if row is not None and row.api_key_encrypted:
+        try:
+            from app.core.crypto import decrypt_secret
+
+            key = decrypt_secret(row.api_key_encrypted).strip()
+            if key:
+                return key
+        except Exception:
+            logger.warning("llm_settings_decrypt_failed")
+    env_key = get_settings().anthropic_api_key
+    if env_key and env_key != "replace-me":
+        return env_key
+    return None
+
+
+@lru_cache(maxsize=256)
+def _cached_router(user_id: uuid.UUID | None, version: str) -> LLMRouter:
+    settings = get_settings()
+    row = _load_user_llm_settings(user_id)
+    api_key = _resolve_api_key(row) or "not-configured"
     provider = AnthropicProvider(
         api_key=api_key,
         timeout_seconds=settings.llm_timeout_seconds,
         max_retries=settings.llm_max_retries,
     )
-    return LLMRouter(provider)
+    return LLMRouter(provider, _build_models(row))
+
+
+def get_llm_router(user_id: uuid.UUID | None = None) -> LLMRouter:
+    row = _load_user_llm_settings(user_id)
+    version = row.updated_at.isoformat() if row is not None else "env"
+    return _cached_router(user_id, version)

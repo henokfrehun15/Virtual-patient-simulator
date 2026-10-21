@@ -160,8 +160,8 @@ def test_scenario_generation_publishes_scenario(pdf_bytes: bytes, monkeypatch) -
     )
     monkeypatch.setattr(ingestion_service, "enqueue_extraction", lambda version_id: None)
     monkeypatch.setattr(materials_routes, "enqueue_extraction", lambda version_id: None)
-    monkeypatch.setattr(clinical_content_module, "get_llm_router", lambda: fake)
-    monkeypatch.setattr(scenario_module, "get_llm_router", lambda: fake)
+    monkeypatch.setattr(clinical_content_module, "get_llm_router", lambda user_id=None: fake)
+    monkeypatch.setattr(scenario_module, "get_llm_router", lambda user_id=None: fake)
 
     with TestClient(app) as client:
         disease_id, headers = _setup_published_disease(client, unique, pdf_bytes)
@@ -235,8 +235,8 @@ def test_scenario_validation_failure_keeps_draft(pdf_bytes: bytes, monkeypatch) 
     )
     monkeypatch.setattr(ingestion_service, "enqueue_extraction", lambda version_id: None)
     monkeypatch.setattr(materials_routes, "enqueue_extraction", lambda version_id: None)
-    monkeypatch.setattr(clinical_content_module, "get_llm_router", lambda: fake)
-    monkeypatch.setattr(scenario_module, "get_llm_router", lambda: fake)
+    monkeypatch.setattr(clinical_content_module, "get_llm_router", lambda user_id=None: fake)
+    monkeypatch.setattr(scenario_module, "get_llm_router", lambda user_id=None: fake)
 
     with TestClient(app) as client:
         disease_id, headers = _setup_published_disease(client, unique, pdf_bytes)

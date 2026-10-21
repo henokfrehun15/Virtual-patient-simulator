@@ -10,6 +10,12 @@ export interface SessionMessage {
   created_at: string;
 }
 
+export interface SessionActionRequest {
+  id: string;
+  result: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface SessionDetail {
   id: string;
   mode: SessionMode;
@@ -35,6 +41,8 @@ export interface SessionDetail {
   chief_complaint: string;
   diagnosis: string | null;
   messages: SessionMessage[];
+  examination_requests: Array<SessionActionRequest & { exam_name: string }>;
+  investigation_requests: Array<SessionActionRequest & { test_name: string }>;
 }
 
 export function startSession(
@@ -54,4 +62,50 @@ export function startSession(
 
 export function getSession(sessionId: string): Promise<SessionDetail> {
   return apiFetch<SessionDetail>(`/api/v1/sessions/${sessionId}`);
+}
+
+export interface ActionResult {
+  id: string;
+  result: Record<string, unknown>;
+  created_at: string;
+}
+
+export function requestExamination(
+  sessionId: string,
+  examName: string,
+  idempotencyKey: string
+): Promise<ActionResult & { exam_name: string }> {
+  return apiFetch(`/api/v1/sessions/${sessionId}/examinations`, {
+    method: "POST",
+    body: JSON.stringify({ exam_name: examName, idempotency_key: idempotencyKey }),
+  });
+}
+
+export function requestInvestigation(
+  sessionId: string,
+  testName: string,
+  idempotencyKey: string
+): Promise<ActionResult & { test_name: string }> {
+  return apiFetch(`/api/v1/sessions/${sessionId}/investigations`, {
+    method: "POST",
+    body: JSON.stringify({ test_name: testName, idempotency_key: idempotencyKey }),
+  });
+}
+
+export function submitDiagnosis(
+  sessionId: string,
+  guess: string,
+  idempotencyKey: string
+): Promise<{ id: string; guess: string; verdict: string | null; created_at: string }> {
+  return apiFetch(`/api/v1/sessions/${sessionId}/diagnosis`, {
+    method: "POST",
+    body: JSON.stringify({ guess, idempotency_key: idempotencyKey }),
+  });
+}
+
+export function completeSession(sessionId: string): Promise<SessionDetail> {
+  return apiFetch<SessionDetail>(`/api/v1/sessions/${sessionId}/complete`, {
+    method: "POST",
+    body: JSON.stringify({ idempotency_key: crypto.randomUUID() }),
+  });
 }

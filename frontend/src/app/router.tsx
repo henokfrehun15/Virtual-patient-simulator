@@ -7,9 +7,12 @@ import { CoursesPage } from "../pages/CoursesPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { DiseasePage } from "../pages/DiseasePage";
 import { LoginPage } from "../pages/LoginPage";
+import { ProgressPage } from "../pages/ProgressPage";
 import { RegisterPage } from "../pages/RegisterPage";
+import { ReportPage } from "../pages/ReportPage";
 import { ScenarioPage } from "../pages/ScenarioPage";
 import { SessionPage } from "../pages/SessionPage";
+import { SettingsPage } from "../pages/SettingsPage";
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const { user, loading } = useAuth();
@@ -71,6 +74,30 @@ export const router = createBrowserRouter([
     element: (
       <RequireAuth>
         <SessionPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/sessions/:sessionId/report",
+    element: (
+      <RequireAuth>
+        <ReportPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/settings",
+    element: (
+      <RequireAuth>
+        <SettingsPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/progress",
+    element: (
+      <RequireAuth>
+        <ProgressPage />
       </RequireAuth>
     ),
   },

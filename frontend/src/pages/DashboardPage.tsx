@@ -1,9 +1,12 @@
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "../features/auth/AuthContext";
+import { getHistory } from "../api/reports";
 
 export function DashboardPage() {
   const { user, logout } = useAuth();
+  const historyQuery = useQuery({ queryKey: ["history"], queryFn: () => getHistory() });
 
   return (
     <main className="page">
@@ -23,13 +26,54 @@ export function DashboardPage() {
           </Link>
         </div>
         <div className="card">
-          <h2>Scenarios</h2>
-          <p>Scenario generation and browsing arrive in Phase 5.</p>
+          <h2>Progress</h2>
+          <p>Category scores, diagnosis accuracy, and your session history.</p>
+          <Link className="card-link" to="/progress">
+            View progress →
+          </Link>
         </div>
         <div className="card">
-          <h2>Progress</h2>
-          <p>Longitudinal progress tracking arrives in Phase 9.</p>
+          <h2>AI provider settings</h2>
+          <p>Add your Anthropic API key and model names to power the simulations.</p>
+          <Link className="card-link" to="/settings">
+            Open settings →
+          </Link>
         </div>
+      </section>
+
+      <section className="card">
+        <h2>Recent encounters</h2>
+        {historyQuery.isLoading ? (
+          <p className="muted">Loading…</p>
+        ) : (historyQuery.data?.items.length ?? 0) === 0 ? (
+          <p className="muted">
+            No completed encounters yet. Pick a course, choose a scenario, and start
+            practicing.
+          </p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Scenario</th>
+                <th>Mode</th>
+                <th>Score</th>
+                <th>Diagnosis</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historyQuery.data?.items.slice(0, 5).map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <Link to={`/sessions/${item.id}/report`}>{item.scenario_title}</Link>
+                  </td>
+                  <td>{item.mode}</td>
+                  <td>{item.overall_score !== null ? Math.round(item.overall_score) : "—"}</td>
+                  <td>{item.diagnosis_verdict ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
     </main>
   );

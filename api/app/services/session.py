@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DbSession
@@ -11,10 +11,13 @@ from app.core.ratelimit import enforce_rate_limit
 from app.models.disease import Disease, DiseaseVersion
 from app.models.message import Message
 from app.models.scenario import Scenario, ScenarioPatientState
+from app.models.session import ExaminationRequest, InvestigationRequest
 from app.models.session import Session as SessionModel
 from app.models.session import SessionEvent
 from app.models.user import User
 from app.schemas.session import (
+    ExaminationResponse,
+    InvestigationResponse,
     MessageResponse,
     SessionPatientInfo,
     SessionResponse,
@@ -38,6 +41,23 @@ def get_owned_session_or_404(db: DbSession, user: User, session_id: uuid.UUID) -
     if session is None or session.user_id != user.id:
         raise AppError("SESSION_NOT_FOUND", "Session not found.", status_code=404)
     return session
+
+
+def ensure_session_active(db: DbSession, session: SessionModel) -> None:
+    if session.status == "completed":
+        raise AppError("SESSION_ALREADY_COMPLETED", "This session is already completed.", 409)
+    if session.status != "active":
+        raise AppError("SESSION_NOT_ACTIVE", "This session is not active.", 409)
+
+    if session.started_at is not None and session.time_limit_seconds is not None:
+        expires_at = session.started_at + timedelta(seconds=session.time_limit_seconds)
+        if datetime.now(timezone.utc) > expires_at:
+            session.status = "abandoned"
+            session.completed_reason = "time_limit"
+            session.ended_at = datetime.now(timezone.utc)
+            record_session_event(db, session.id, "session_abandoned", {"reason": "time_limit"})
+            db.commit()
+            raise AppError("SESSION_NOT_ACTIVE", "This session has expired.", 409)
 
 
 def start_session(
@@ -118,6 +138,25 @@ def build_session_response(db: DbSession, session: SessionModel) -> SessionRespo
         .order_by(Message.turn_number, Message.created_at)
     ).all()
 
+    exam_requests = (
+        db.scalars(
+            select(ExaminationRequest)
+            .where(ExaminationRequest.session_id == session.id)
+            .order_by(ExaminationRequest.created_at)
+        )
+        .unique()
+        .all()
+    )
+    inv_requests = (
+        db.scalars(
+            select(InvestigationRequest)
+            .where(InvestigationRequest.session_id == session.id)
+            .order_by(InvestigationRequest.created_at)
+        )
+        .unique()
+        .all()
+    )
+
     return SessionResponse(
         id=session.id,
         mode=session.mode,
@@ -143,4 +182,22 @@ def build_session_response(db: DbSession, session: SessionModel) -> SessionRespo
         chief_complaint=state.get("chief_complaint") or "",
         diagnosis=disease_version.name if session.mode == "practice" else None,
         messages=[MessageResponse.model_validate(message) for message in messages],
+        examination_requests=[
+            ExaminationResponse(
+                id=request.id,
+                exam_name=request.exam_name,
+                result=request.result or {},
+                created_at=request.created_at,
+            )
+            for request in exam_requests
+        ],
+        investigation_requests=[
+            InvestigationResponse(
+                id=request.id,
+                test_name=request.test_name,
+                result=request.result or {},
+                created_at=request.created_at,
+            )
+            for request in inv_requests
+        ],
     )

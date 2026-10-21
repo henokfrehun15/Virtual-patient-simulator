@@ -17,10 +17,21 @@ from app.llm.prompts import patient as patient_prompts
 from app.llm.router import LLMRequest, get_llm_router
 from app.models.message import Message
 from app.models.user import User
-from app.schemas.session import SessionResponse, StartSessionRequest, StreamMessageRequest
+from app.schemas.session import (
+    ExaminationRequest,
+    ExaminationResponse,
+    InvestigationRequest,
+    InvestigationResponse,
+    SessionResponse,
+    StartSessionRequest,
+    StreamMessageRequest,
+)
 from app.services import conversation
+from app.services import examinations as examination_service
+from app.services import investigations as investigation_service
 from app.services.session import (
     build_session_response,
+    ensure_session_active,
     get_owned_session_or_404,
     start_session,
 )
@@ -90,10 +101,8 @@ def stream_session_message(
                 headers=STREAM_HEADERS,
             )
 
-    if session.status == "completed":
-        raise AppError("SESSION_ALREADY_COMPLETED", "This session is already completed.", 409)
-    if session.status != "active":
-        raise AppError("SESSION_NOT_ACTIVE", "This session is not active.", 409)
+    ensure_session_active(db, session)
+
     if session.current_turn >= (session.turn_limit or settings.max_session_turns):
         raise AppError(
             "SESSION_TURN_LIMIT", "The turn limit for this session has been reached.", 409
@@ -126,6 +135,52 @@ def stream_session_message(
         ),
         media_type="text/event-stream",
         headers=STREAM_HEADERS,
+    )
+
+
+@router.post(
+    "/{session_id}/examinations",
+    response_model=ExaminationResponse,
+    status_code=201,
+)
+def request_examination(
+    session_id: uuid.UUID,
+    body: ExaminationRequest,
+    db: DbSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> ExaminationResponse:
+    session = get_owned_session_or_404(db, user, session_id)
+    request_row = examination_service.request_examination(
+        db, session, body.exam_name, body.idempotency_key
+    )
+    return ExaminationResponse(
+        id=request_row.id,
+        exam_name=request_row.exam_name,
+        result=request_row.result or {},
+        created_at=request_row.created_at,
+    )
+
+
+@router.post(
+    "/{session_id}/investigations",
+    response_model=InvestigationResponse,
+    status_code=201,
+)
+def request_investigation(
+    session_id: uuid.UUID,
+    body: InvestigationRequest,
+    db: DbSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> InvestigationResponse:
+    session = get_owned_session_or_404(db, user, session_id)
+    request_row = investigation_service.request_investigation(
+        db, session, body.test_name, body.idempotency_key
+    )
+    return InvestigationResponse(
+        id=request_row.id,
+        test_name=request_row.test_name,
+        result=request_row.result or {},
+        created_at=request_row.created_at,
     )
 
 
@@ -166,9 +221,7 @@ def _stream_events(
                 chunks.append(delta)
                 yield _sse("token", {"text": delta})
         except AppError as exc:
-            logger.warning(
-                "patient_stream_failed", session_id=str(session_id), code=exc.code
-            )
+            logger.warning("patient_stream_failed", session_id=str(session_id), code=exc.code)
             conversation.abort_turn(session_id=session_id, doctor_message_id=doctor_message_id)
             yield _sse("error", {"code": exc.code, "message": PATIENT_UNAVAILABLE_MESSAGE})
             return

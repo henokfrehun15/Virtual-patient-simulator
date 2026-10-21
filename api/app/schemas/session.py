@@ -55,3 +55,32 @@ class SessionResponse(BaseModel):
     chief_complaint: str
     diagnosis: str | None = None
     messages: list[MessageResponse]
+    examination_requests: list["ExaminationResponse"] = []
+    investigation_requests: list["InvestigationResponse"] = []
+
+
+class ExaminationRequest(BaseModel):
+    exam_name: str = Field(min_length=2, max_length=200)
+    idempotency_key: str | None = Field(default=None, min_length=8, max_length=100)
+
+
+class ExaminationResponse(BaseModel):
+    id: uuid.UUID
+    exam_name: str
+    result: dict
+    created_at: datetime
+
+
+class InvestigationRequest(BaseModel):
+    test_name: str = Field(min_length=2, max_length=200)
+    idempotency_key: str | None = Field(default=None, min_length=8, max_length=100)
+
+
+class InvestigationResponse(BaseModel):
+    id: uuid.UUID
+    test_name: str
+    result: dict
+    created_at: datetime
+
+
+SessionResponse.model_rebuild()

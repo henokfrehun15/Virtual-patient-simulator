@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { getCourse, listMaterials, uploadMaterial } from "../api/courses";
+import { listCourseDiseases } from "../api/diseases";
 
 const BUSY_STATUSES = ["uploaded", "extracting"];
 
@@ -35,6 +36,19 @@ export function CoursePage() {
           BUSY_STATUSES.includes(material.latest_version.status)
       );
       return busy ? 2000 : false;
+    },
+  });
+
+  const diseasesQuery = useQuery({
+    queryKey: ["courses", courseId, "diseases"],
+    queryFn: () => listCourseDiseases(courseId!),
+    enabled: courseId !== undefined,
+    refetchInterval: (query) => {
+      const items = query.state.data?.items ?? [];
+      const processing = items.some(
+        (disease) => disease.latest_version !== null && disease.latest_version.status === "draft"
+      );
+      return processing ? 3000 : false;
     },
   });
 
@@ -128,6 +142,44 @@ export function CoursePage() {
                       <span className={`badge badge-${status}`}>{status}</span>
                     </td>
                     <td>{new Date(material.created_at).toLocaleString()}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </section>
+      <section className="card">
+        <h2>Extracted diseases</h2>
+        {diseasesQuery.isLoading ? (
+          <p className="muted">Loading…</p>
+        ) : (diseasesQuery.data?.items.length ?? 0) === 0 ? (
+          <p className="muted">
+            Diseases appear here once clinical content extraction completes for your materials.
+          </p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Disease</th>
+                <th>Status</th>
+                <th>Version</th>
+              </tr>
+            </thead>
+            <tbody>
+              {diseasesQuery.data?.items.map((disease) => {
+                const status = disease.latest_version?.status ?? "draft";
+                return (
+                  <tr key={disease.id}>
+                    <td>
+                      <Link to={`/diseases/${disease.id}`}>
+                        {disease.latest_version?.name ?? disease.canonical_name}
+                      </Link>
+                    </td>
+                    <td>
+                      <span className={`badge badge-${status}`}>{status}</span>
+                    </td>
+                    <td>v{disease.latest_version?.version ?? "—"}</td>
                   </tr>
                 );
               })}

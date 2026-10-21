@@ -5,6 +5,7 @@ import { useAuth } from "../features/auth/AuthContext";
 import { CoursePage } from "../pages/CoursePage";
 import { CoursesPage } from "../pages/CoursesPage";
 import { DashboardPage } from "../pages/DashboardPage";
+import { DiseasePage } from "../pages/DiseasePage";
 import { LoginPage } from "../pages/LoginPage";
 import { RegisterPage } from "../pages/RegisterPage";
 
@@ -44,6 +45,14 @@ export const router = createBrowserRouter([
     element: (
       <RequireAuth>
         <CoursePage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/diseases/:diseaseId",
+    element: (
+      <RequireAuth>
+        <DiseasePage />
       </RequireAuth>
     ),
   },

@@ -28,9 +28,13 @@ class Settings(BaseSettings):
     llm_patient_model: str = ""
     llm_scoring_model: str = ""
     llm_feedback_model: str = ""
+    llm_timeout_seconds: float = 120
+    llm_max_retries: int = 2
 
     embedding_model: str = ""
     embedding_dimensions: int = 1536
+    embedding_base_url: str = ""
+    embedding_api_key: str = ""
 
     cors_origins: str = "http://localhost:5173"
 
@@ -45,6 +49,10 @@ class Settings(BaseSettings):
     chunk_overlap_chars: int = 150
     ocr_min_text_chars: int = 40
     ocr_dpi: int = 150
+    discovery_chunks_per_call: int = 40
+    max_diseases_per_material: int = 50
+    profile_chunks_per_disease: int = 20
+    max_evidence_text_chars: int = 2000
 
     object_storage_endpoint: str = ""
     object_storage_bucket: str = ""

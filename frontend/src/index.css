@@ -443,7 +443,127 @@ a {
 
 .mode-buttons button {
   width: auto;
+}
+
+.mode-buttons button:disabled {
   background: #e2e8f0;
   color: #64748b;
   cursor: not-allowed;
+}
+
+.btn-practice {
+  background: #2563eb;
+}
+
+.btn-test {
+  background: #7c3aed;
+}
+
+.session-page {
+  max-width: 860px;
+}
+
+.session-status {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.badge-mode-practice {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-mode-test {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.diagnosis-banner {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  font-size: 0.92rem;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem;
+  min-height: 280px;
+  max-height: 48vh;
+  overflow-y: auto;
+}
+
+.chat-hint {
+  text-align: center;
+  margin: auto;
+}
+
+.bubble {
+  max-width: 78%;
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  margin-bottom: 0.5rem;
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.bubble-doctor {
+  align-self: flex-end;
+  background: #2563eb;
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+}
+
+.bubble-patient {
+  align-self: flex-start;
+  background: #e8edf5;
+  color: #16213e;
+  border-bottom-left-radius: 4px;
+}
+
+.bubble-streaming {
+  opacity: 0.85;
+}
+
+.session-error {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+
+.composer {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.composer textarea {
+  flex: 1;
+  resize: none;
+  min-height: 48px;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.composer button {
+  width: auto;
+  align-self: flex-end;
 }

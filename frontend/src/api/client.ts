@@ -1,5 +1,7 @@
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 
+export { API_URL };
+
 const ACCESS_TOKEN_STORAGE_KEY = "vps.access_token";
 
 let accessToken: string | null = window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
@@ -11,6 +13,10 @@ export function setAccessToken(token: string | null): void {
   } else {
     window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
   }
+}
+
+export function getAccessToken(): string | null {
+  return accessToken;
 }
 
 export class ApiError extends Error {

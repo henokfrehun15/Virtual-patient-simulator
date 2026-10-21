@@ -9,6 +9,7 @@ import { DiseasePage } from "../pages/DiseasePage";
 import { LoginPage } from "../pages/LoginPage";
 import { RegisterPage } from "../pages/RegisterPage";
 import { ScenarioPage } from "../pages/ScenarioPage";
+import { SessionPage } from "../pages/SessionPage";
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const { user, loading } = useAuth();
@@ -62,6 +63,14 @@ export const router = createBrowserRouter([
     element: (
       <RequireAuth>
         <ScenarioPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/sessions/:sessionId",
+    element: (
+      <RequireAuth>
+        <SessionPage />
       </RequireAuth>
     ),
   },

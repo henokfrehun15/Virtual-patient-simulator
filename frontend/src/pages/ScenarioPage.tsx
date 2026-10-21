@@ -1,15 +1,23 @@
-import { Link, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { getScenario } from "../api/scenarios";
+import { startSession, type SessionMode } from "../api/sessions";
 
 export function ScenarioPage() {
   const { scenarioId } = useParams<{ scenarioId: string }>();
+  const navigate = useNavigate();
 
   const scenarioQuery = useQuery({
     queryKey: ["scenarios", scenarioId],
     queryFn: () => getScenario(scenarioId!),
     enabled: scenarioId !== undefined,
+  });
+
+  const startMutation = useMutation({
+    mutationFn: (mode: SessionMode) =>
+      startSession(scenarioId!, mode, crypto.randomUUID()),
+    onSuccess: (session) => navigate(`/sessions/${session.id}`),
   });
 
   if (scenarioQuery.isLoading) {
@@ -64,12 +72,35 @@ export function ScenarioPage() {
       <section className="card">
         <h2>Start an encounter</h2>
         <div className="mode-buttons">
-          <button disabled>Practice mode</button>
-          <button disabled>Test mode</button>
+          <button
+            className="btn-practice"
+            onClick={() => startMutation.mutate("practice")}
+            disabled={startMutation.isPending}
+          >
+            {startMutation.isPending && startMutation.variables === "practice"
+              ? "Starting…"
+              : "Practice mode"}
+          </button>
+          <button
+            className="btn-test"
+            onClick={() => startMutation.mutate("test")}
+            disabled={startMutation.isPending}
+          >
+            {startMutation.isPending && startMutation.variables === "test"
+              ? "Starting…"
+              : "Test mode"}
+          </button>
         </div>
+        {startMutation.isError && (
+          <p className="error">
+            {startMutation.error instanceof Error
+              ? startMutation.error.message
+              : "Failed to start session."}
+          </p>
+        )}
         <p className="muted">
-          Practice shows the diagnosis up front; test keeps it hidden until you submit your
-          final answer. Patient encounters arrive with the session engine (Phase 6).
+          Practice shows the diagnosis up front; test keeps it hidden until you submit
+          your final answer.
         </p>
       </section>
     </main>

@@ -83,4 +83,20 @@ class InvestigationResponse(BaseModel):
     created_at: datetime
 
 
+class DiagnosisSubmitRequest(BaseModel):
+    guess: str = Field(min_length=1, max_length=500)
+    idempotency_key: str | None = Field(default=None, min_length=8, max_length=100)
+
+
+class DiagnosisSubmitResponse(BaseModel):
+    id: uuid.UUID
+    guess: str
+    verdict: str | None
+    created_at: datetime
+
+
+class CompleteSessionRequest(BaseModel):
+    idempotency_key: str | None = Field(default=None, min_length=8, max_length=100)
+
+
 SessionResponse.model_rebuild()

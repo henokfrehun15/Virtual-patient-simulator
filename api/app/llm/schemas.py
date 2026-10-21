@@ -117,3 +117,36 @@ class ScenarioGenerationResult(BaseModel):
     emotional_state: str = Field(min_length=1, max_length=300)
     examinations: list[ScenarioExamination] = Field(default_factory=list)
     investigations: list[ScenarioInvestigation] = Field(default_factory=list)
+
+
+class RubricMatchStatus(str, Enum):
+    SATISFIED = "satisfied"
+    PARTIALLY_SATISFIED = "partially_satisfied"
+    ATTEMPTED = "attempted"
+    POORLY_ASKED = "poorly_asked"
+    UNSAFE = "unsafe"
+    NOT_APPLICABLE = "not_applicable"
+
+
+class RubricMatch(BaseModel):
+    rubric_index: int = Field(ge=1)
+    status: RubricMatchStatus
+    confidence: float = Field(ge=0.0, le=1.0)
+    quality_score: float = Field(ge=0.0, le=1.0)
+    reason: str = Field(default="", max_length=1000)
+
+
+class RubricMatchResult(BaseModel):
+    matches: list[RubricMatch] = Field(default_factory=list)
+
+
+class DiagnosisNormalization(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+
+
+class FeedbackResult(BaseModel):
+    narrative: str = Field(min_length=1, max_length=6000)
+    strengths: list[str] = Field(default_factory=list)
+    gaps: list[str] = Field(default_factory=list)
+    critical_misses: list[str] = Field(default_factory=list)
+    one_recommended_focus: str = Field(default="", max_length=500)

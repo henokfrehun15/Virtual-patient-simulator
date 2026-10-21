@@ -159,7 +159,10 @@ def test_test_mode_hides_diagnosis_and_enforces_ownership() -> None:
 
 def test_message_stream_flow_and_replay(monkeypatch) -> None:
     fake = FakeStreamRouter()
-    monkeypatch.setattr(sessions_routes, "get_llm_router", lambda: fake)
+    monkeypatch.setattr(sessions_routes, "get_llm_router", lambda user_id=None: fake)
+    monkeypatch.setattr(
+        sessions_routes, "enqueue_message_scoring", lambda *args, **kwargs: None
+    )
     scenario_id = create_published_scenario()
     unique = uuid.uuid4().hex[:8]
 
@@ -210,7 +213,10 @@ def test_message_stream_flow_and_replay(monkeypatch) -> None:
 
 def test_stream_failure_aborts_turn_and_allows_retry(monkeypatch) -> None:
     failing = FailingStreamRouter()
-    monkeypatch.setattr(sessions_routes, "get_llm_router", lambda: failing)
+    monkeypatch.setattr(sessions_routes, "get_llm_router", lambda user_id=None: failing)
+    monkeypatch.setattr(
+        sessions_routes, "enqueue_message_scoring", lambda *args, **kwargs: None
+    )
     scenario_id = create_published_scenario()
     unique = uuid.uuid4().hex[:8]
 
@@ -237,7 +243,7 @@ def test_stream_failure_aborts_turn_and_allows_retry(monkeypatch) -> None:
         assert detail["current_turn"] == 0
 
         working = FakeStreamRouter()
-        monkeypatch.setattr(sessions_routes, "get_llm_router", lambda: working)
+        monkeypatch.setattr(sessions_routes, "get_llm_router", lambda user_id=None: working)
         retry = client.post(
             f"/api/v1/sessions/{session_id}/messages/stream",
             json={"content": "When did it start?"},
@@ -253,7 +259,10 @@ def test_stream_failure_aborts_turn_and_allows_retry(monkeypatch) -> None:
 def test_turn_limit_enforced(monkeypatch) -> None:
     monkeypatch.setattr(get_settings(), "max_session_turns", 1)
     fake = FakeStreamRouter()
-    monkeypatch.setattr(sessions_routes, "get_llm_router", lambda: fake)
+    monkeypatch.setattr(sessions_routes, "get_llm_router", lambda user_id=None: fake)
+    monkeypatch.setattr(
+        sessions_routes, "enqueue_message_scoring", lambda *args, **kwargs: None
+    )
     scenario_id = create_published_scenario()
     unique = uuid.uuid4().hex[:8]
 
@@ -285,7 +294,10 @@ def test_turn_limit_enforced(monkeypatch) -> None:
 
 def test_concurrent_turn_rejected(monkeypatch) -> None:
     fake = FakeStreamRouter()
-    monkeypatch.setattr(sessions_routes, "get_llm_router", lambda: fake)
+    monkeypatch.setattr(sessions_routes, "get_llm_router", lambda user_id=None: fake)
+    monkeypatch.setattr(
+        sessions_routes, "enqueue_message_scoring", lambda *args, **kwargs: None
+    )
     scenario_id = create_published_scenario()
     unique = uuid.uuid4().hex[:8]
 

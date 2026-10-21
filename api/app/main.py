@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
-from app.api.routes import auth, health
+from app.api.routes import auth, courses, health, materials
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging import configure_logging, get_logger
@@ -69,3 +69,6 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(courses.router)
+app.include_router(materials.router)
+app.include_router(materials.upload_router)

@@ -22,8 +22,8 @@ logger = get_logger("app.llm.router")
 class LLMRequest:
     system: str
     user: str
-    schema_model: type[pydantic.BaseModel]
     prompt_version: str
+    schema_model: type[pydantic.BaseModel] | None = None
     max_tokens: int = 4096
     schema_version: str = "v1"
     session_id: uuid.UUID | None = None
@@ -94,9 +94,9 @@ class LLMRouter:
             )
         return model
 
-    def generate(self, task: str, request: LLMRequest) -> pydantic.BaseModel:
+    def generate(self, task: str, request: LLMRequest) -> pydantic.BaseModel | str:
         model = self.model_for_task(task)
-        schema = build_json_schema(request.schema_model)
+        schema = build_json_schema(request.schema_model) if request.schema_model else None
 
         status = "succeeded"
         error_code: str | None = None
@@ -111,6 +111,8 @@ class LLMRouter:
                 max_tokens=request.max_tokens,
                 json_schema=schema,
             )
+            if request.schema_model is None:
+                return text
             data = extract_json(text)
             return request.schema_model.model_validate(data)
         except AppError as exc:
@@ -129,6 +131,49 @@ class LLMRouter:
                 "The model response failed schema validation.",
                 status_code=502,
             ) from exc
+        finally:
+            latency_ms = round((time.perf_counter() - started) * 1000)
+            _record_llm_request(
+                task=task,
+                provider=self._provider.provider_name,
+                model=model,
+                prompt_version=request.prompt_version,
+                schema_version=request.schema_version,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                latency_ms=latency_ms,
+                status=status,
+                error_code=error_code,
+                session_id=request.session_id,
+            )
+
+    def stream(self, task: str, request: LLMRequest):
+        model = self.model_for_task(task)
+        provider_stream = self._provider.stream(
+            model=model,
+            system=request.system,
+            user=request.user,
+            max_tokens=request.max_tokens,
+        )
+
+        status = "succeeded"
+        error_code: str | None = None
+        input_tokens: int | None = None
+        output_tokens: int | None = None
+        started = time.perf_counter()
+        try:
+            for delta in provider_stream:
+                yield delta
+            input_tokens = provider_stream.input_tokens
+            output_tokens = provider_stream.output_tokens
+        except AppError as exc:
+            status = "failed"
+            error_code = exc.code
+            raise
+        except ProviderError as exc:
+            status = "failed"
+            error_code = exc.error_code
+            raise AppError(exc.error_code, str(exc), status_code=502) from exc
         finally:
             latency_ms = round((time.perf_counter() - started) * 1000)
             _record_llm_request(

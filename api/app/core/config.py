@@ -55,6 +55,13 @@ class Settings(BaseSettings):
     max_evidence_text_chars: int = 2000
     scenario_difficulties: str = "easy,medium,hard"
     scenario_estimated_duration_minutes: int = 15
+    session_time_limit_seconds: int = 2700
+    conversation_context_turns: int = 12
+    message_rate_limit_count: int = 20
+    message_rate_limit_window_seconds: int = 60
+    session_start_rate_limit_count: int = 10
+    session_start_rate_limit_window_seconds: int = 60
+    turn_lock_ttl_seconds: int = 300
 
     object_storage_endpoint: str = ""
     object_storage_bucket: str = ""

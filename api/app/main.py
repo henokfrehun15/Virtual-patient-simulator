@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
-from app.api.routes import auth, courses, diseases, health, materials, scenarios
+from app.api.routes import auth, courses, diseases, health, materials, scenarios, sessions
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging import configure_logging, get_logger
@@ -76,3 +76,4 @@ app.include_router(diseases.router)
 app.include_router(diseases.course_router)
 app.include_router(scenarios.router)
 app.include_router(scenarios.disease_router)
+app.include_router(sessions.router)

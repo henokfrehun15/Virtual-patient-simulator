@@ -29,3 +29,12 @@ def extract_material(self: Task, material_version_id: str) -> None:
             error=repr(exc),
         )
         raise self.retry(exc=exc, countdown=countdown)
+
+    try:
+        from app.tasks.extraction import extract_clinical_content
+
+        extract_clinical_content.delay(material_version_id)
+    except Exception:
+        logger.error(
+            "clinical_content_enqueue_failed", material_version_id=material_version_id
+        )

@@ -16,9 +16,25 @@ MODEL_FIELDS = (
     "feedback_model",
 )
 
+SUPPORTED_PROVIDERS = ("anthropic", "groq")
+
 
 def get_llm_settings_row(db: DbSession, user_id: uuid.UUID) -> UserLLMSettings | None:
     return db.scalar(select(UserLLMSettings).where(UserLLMSettings.user_id == user_id))
+
+
+def resolve_provider(row: UserLLMSettings | None) -> str:
+    provider = (row.provider if row is not None else None) or get_settings().llm_provider
+    return provider if provider in SUPPORTED_PROVIDERS else "anthropic"
+
+
+def env_api_key_for(provider: str) -> str | None:
+    settings = get_settings()
+    if provider == "groq":
+        key = settings.groq_api_key
+    else:
+        key = settings.anthropic_api_key
+    return key if key and key != "replace-me" else None
 
 
 def update_llm_settings(
@@ -29,10 +45,16 @@ def update_llm_settings(
         row = UserLLMSettings(user_id=user_id)
         db.add(row)
 
+    previous_provider = row.provider
+    if body.provider is not None:
+        row.provider = body.provider
+
     if body.clear_api_key:
         row.api_key_encrypted = None
     elif body.api_key is not None:
         row.api_key_encrypted = encrypt_secret(body.api_key.strip())
+    elif body.provider is not None and previous_provider != body.provider:
+        row.api_key_encrypted = None
 
     for field in MODEL_FIELDS:
         value = getattr(body, field)
@@ -47,6 +69,7 @@ def update_llm_settings(
 def llm_settings_response(db: DbSession, user_id: uuid.UUID) -> LLMSettingsResponse:
     settings = get_settings()
     row = get_llm_settings_row(db, user_id)
+    provider = resolve_provider(row)
 
     api_key_set = False
     api_key_source: str | None = None
@@ -56,7 +79,7 @@ def llm_settings_response(db: DbSession, user_id: uuid.UUID) -> LLMSettingsRespo
             api_key_source = "user" if api_key_set else None
         except Exception:
             api_key_set = False
-    if not api_key_set and settings.anthropic_api_key and settings.anthropic_api_key != "replace-me":
+    if not api_key_set and env_api_key_for(provider) is not None:
         api_key_set = True
         api_key_source = "env"
 
@@ -73,6 +96,7 @@ def llm_settings_response(db: DbSession, user_id: uuid.UUID) -> LLMSettingsRespo
     }
 
     return LLMSettingsResponse(
+        provider=provider,
         api_key_set=api_key_set,
         api_key_source=api_key_source,
         **models,

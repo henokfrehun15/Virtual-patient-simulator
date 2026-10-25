@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     llm_settings_secret: str = ""
 
     anthropic_api_key: str = "replace-me"
+    groq_api_key: str = "replace-me"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    llm_provider: str = "anthropic"
     llm_extraction_model: str = ""
     llm_scenario_model: str = ""
     llm_patient_model: str = ""

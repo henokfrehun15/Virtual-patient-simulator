@@ -60,6 +60,7 @@ class UserLLMSettings(UUIDMixin, TimestampMixin, Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
+    provider: Mapped[str | None] = mapped_column(Text)
     api_key_encrypted: Mapped[str | None] = mapped_column(Text)
     extraction_model: Mapped[str | None] = mapped_column(Text)
     scenario_model: Mapped[str | None] = mapped_column(Text)

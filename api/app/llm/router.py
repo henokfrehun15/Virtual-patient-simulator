@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import json
 import re
 import time
 import uuid
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pydantic
 from sqlalchemy import select
@@ -16,6 +18,9 @@ from app.core.logging import get_logger
 from app.llm.provider import AnthropicProvider, ProviderError
 from app.models.llm import LlmRequest as LlmRequestModel
 from app.models.llm import UserLLMSettings
+
+if TYPE_CHECKING:
+    from app.llm.groq import GroqProvider
 
 logger = get_logger("app.llm.router")
 
@@ -83,7 +88,7 @@ def _strictify(node: Any) -> Any:
 
 
 class LLMRouter:
-    def __init__(self, provider: AnthropicProvider, models: dict[str, str]) -> None:
+    def __init__(self, provider: AnthropicProvider | GroqProvider, models: dict[str, str]) -> None:
         self._provider = provider
         self._models = models
 
@@ -282,7 +287,7 @@ def _build_models(row: UserLLMSettings | None) -> dict[str, str]:
     return {task: values[key] for task, key in TASK_MODEL_KEYS.items()}
 
 
-def _resolve_api_key(row: UserLLMSettings | None) -> str | None:
+def _resolve_api_key(row: UserLLMSettings | None, provider: str) -> str | None:
     if row is not None and row.api_key_encrypted:
         try:
             from app.core.crypto import decrypt_secret
@@ -292,22 +297,47 @@ def _resolve_api_key(row: UserLLMSettings | None) -> str | None:
                 return key
         except Exception:
             logger.warning("llm_settings_decrypt_failed")
-    env_key = get_settings().anthropic_api_key
+    settings = get_settings()
+    env_key = settings.groq_api_key if provider == "groq" else settings.anthropic_api_key
     if env_key and env_key != "replace-me":
         return env_key
     return None
+
+
+def _resolve_provider(row: UserLLMSettings | None) -> str:
+    provider = (row.provider if row is not None else None) or get_settings().llm_provider
+    return provider if provider in ("anthropic", "groq") else "anthropic"
 
 
 @lru_cache(maxsize=256)
 def _cached_router(user_id: uuid.UUID | None, version: str) -> LLMRouter:
     settings = get_settings()
     row = _load_user_llm_settings(user_id)
-    api_key = _resolve_api_key(row) or "not-configured"
-    provider = AnthropicProvider(
-        api_key=api_key,
-        timeout_seconds=settings.llm_timeout_seconds,
-        max_retries=settings.llm_max_retries,
-    )
+    provider_name = _resolve_provider(row)
+    api_key = _resolve_api_key(row, provider_name) or "not-configured"
+    provider: AnthropicProvider | GroqProvider
+    if provider_name == "groq":
+        try:
+            from app.llm.groq import GroqProvider
+        except ImportError as exc:
+            raise AppError(
+                "LLM_PROVIDER_UNAVAILABLE",
+                "The Groq provider requires the 'openai' package. "
+                "Rebuild the API image (docker compose build api) to install it.",
+                status_code=503,
+            ) from exc
+        provider = GroqProvider(
+            api_key=api_key,
+            timeout_seconds=settings.llm_timeout_seconds,
+            max_retries=settings.llm_max_retries,
+            base_url=settings.groq_base_url,
+        )
+    else:
+        provider = AnthropicProvider(
+            api_key=api_key,
+            timeout_seconds=settings.llm_timeout_seconds,
+            max_retries=settings.llm_max_retries,
+        )
     return LLMRouter(provider, _build_models(row))
 
 

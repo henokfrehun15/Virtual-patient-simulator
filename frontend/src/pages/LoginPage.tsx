@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { AuthLayout } from "../app/AuthLayout";
 import { useAuth } from "../features/auth/AuthContext";
 
 export function LoginPage() {
@@ -26,10 +27,10 @@ export function LoginPage() {
   };
 
   return (
-    <main className="auth-page">
-      <h1>Virtual Patient Simulator</h1>
-      <form className="card" onSubmit={handleSubmit}>
-        <h2>Sign in</h2>
+    <AuthLayout>
+      <form className="card auth-card" onSubmit={handleSubmit}>
+        <h2>Welcome back</h2>
+        <p className="muted">Sign in to continue your encounters.</p>
         <label>
           Email
           <input
@@ -54,10 +55,10 @@ export function LoginPage() {
         <button type="submit" disabled={submitting}>
           {submitting ? "Signing in…" : "Sign in"}
         </button>
-        <p>
+        <p className="auth-switch">
           Need an account? <Link to="/register">Register</Link>
         </p>
       </form>
-    </main>
+    </AuthLayout>
   );
 }

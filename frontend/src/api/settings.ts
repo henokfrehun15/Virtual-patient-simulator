@@ -1,6 +1,9 @@
 import { apiFetch } from "./client";
 
+export type LLMProvider = "anthropic" | "groq";
+
 export interface LLMSettings {
+  provider: LLMProvider;
   api_key_set: boolean;
   api_key_source: string | null;
   extraction_model: string;
@@ -11,6 +14,7 @@ export interface LLMSettings {
 }
 
 export interface LLMSettingsUpdate {
+  provider?: LLMProvider;
   api_key?: string;
   clear_api_key?: boolean;
   extraction_model?: string;

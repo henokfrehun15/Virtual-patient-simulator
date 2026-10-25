@@ -27,9 +27,51 @@ function MessageBubble({
   content: string;
   streaming?: boolean;
 }) {
-  const className = role === "doctor" ? "bubble bubble-doctor" : "bubble bubble-patient";
+  const isDoctor = role === "doctor";
   return (
-    <div className={`${className}${streaming ? " bubble-streaming" : ""}`}>{content}</div>
+    <div className={`chat-row${isDoctor ? " chat-row-doctor" : ""}`}>
+      <span className={`chat-avatar${isDoctor ? " chat-avatar-doctor" : ""}`} aria-hidden="true">
+        {isDoctor ? (
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M12 3v7" />
+            <path d="M9 6.5h6" />
+            <path d="M12 10c0 4-3 7-6 9" />
+            <path d="M12 10c0 4 3 7 6 9" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21c0-4 3.5-6.5 8-6.5s8 2.5 8 6.5" />
+          </svg>
+        )}
+      </span>
+      <div
+        className={`bubble ${isDoctor ? "bubble-doctor" : "bubble-patient"}${
+          streaming ? " bubble-streaming" : ""
+        }`}
+      >
+        {content}
+        {streaming && <span className="caret" aria-hidden="true" />}
+      </div>
+    </div>
+  );
+}
+
+function TypingIndicator() {
+  return (
+    <div className="chat-row">
+      <span className="chat-avatar" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21c0-4 3.5-6.5 8-6.5s8 2.5 8 6.5" />
+        </svg>
+      </span>
+      <div className="bubble bubble-patient bubble-typing" aria-label="Patient is typing">
+        <span className="dot" />
+        <span className="dot" />
+        <span className="dot" />
+      </div>
+    </div>
   );
 }
 
@@ -213,14 +255,13 @@ export function SessionPage() {
 
   return (
     <main className="page session-page">
-      <nav className="top-nav">
-        <Link to="/">Dashboard</Link>
-        <Link to="/courses">Courses</Link>
-        <Link to={`/scenarios/${session.scenario.id}`}>{session.scenario.title}</Link>
-      </nav>
-
       <header className="page-header">
         <div>
+          <nav className="breadcrumb">
+            <Link to={`/scenarios/${session.scenario.id}`}>{session.scenario.title}</Link>
+            <span className="breadcrumb-sep">/</span>
+            <span>Encounter</span>
+          </nav>
           <h1>{session.scenario.title}</h1>
           <p className="muted">
             {session.patient.name ?? "Patient"} · {session.patient.age ?? "—"} ·{" "}
@@ -255,6 +296,7 @@ export function SessionPage() {
         {session.messages.map((message) => (
           <MessageBubble key={message.id} role={message.role} content={message.content} />
         ))}
+        {isStreaming && streamingMessage === null && <TypingIndicator />}
         {streamingMessage !== null && (
           <MessageBubble role="patient" content={streamingMessage} streaming />
         )}

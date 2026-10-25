@@ -32,12 +32,11 @@ export function CoursesPage() {
 
   return (
     <main className="page">
-      <nav className="top-nav">
-        <Link to="/">Dashboard</Link>
-        <span>Courses</span>
-      </nav>
       <header className="page-header">
-        <h1>Courses</h1>
+        <div>
+          <h1>Courses</h1>
+          <p className="muted">Upload course PDFs and browse extracted clinical content.</p>
+        </div>
       </header>
       <section className="grid">
         <form className="card" onSubmit={handleSubmit}>

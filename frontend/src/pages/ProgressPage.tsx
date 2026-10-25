@@ -15,10 +15,6 @@ export function ProgressPage() {
 
   return (
     <main className="page">
-      <nav className="top-nav">
-        <Link to="/">Dashboard</Link>
-        <span>Progress</span>
-      </nav>
       <header className="page-header">
         <div>
           <h1>Progress</h1>

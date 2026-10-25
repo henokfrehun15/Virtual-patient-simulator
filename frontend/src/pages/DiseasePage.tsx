@@ -236,13 +236,15 @@ export function DiseasePage() {
 
   return (
     <main className="page">
-      <nav className="top-nav">
-        <Link to="/">Dashboard</Link>
-        <Link to="/courses">Courses</Link>
-        <span>{disease.canonical_name}</span>
-      </nav>
       <header className="page-header">
-        <h1>{disease.canonical_name}</h1>
+        <div>
+          <nav className="breadcrumb">
+            <Link to="/courses">Courses</Link>
+            <span className="breadcrumb-sep">/</span>
+            <span>{disease.canonical_name}</span>
+          </nav>
+          <h1>{disease.canonical_name}</h1>
+        </div>
       </header>
 
       <section className="section-block">

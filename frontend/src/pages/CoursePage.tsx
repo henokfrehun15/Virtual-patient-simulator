@@ -88,12 +88,13 @@ export function CoursePage() {
 
   return (
     <main className="page">
-      <nav className="top-nav">
-        <Link to="/">Dashboard</Link>
-        <Link to="/courses">Courses</Link>
-      </nav>
       <header className="page-header">
         <div>
+          <nav className="breadcrumb">
+            <Link to="/courses">Courses</Link>
+            <span className="breadcrumb-sep">/</span>
+            <span>{course.name}</span>
+          </nav>
           <h1>{course.name}</h1>
           {course.description !== null && <p className="muted">{course.description}</p>}
         </div>

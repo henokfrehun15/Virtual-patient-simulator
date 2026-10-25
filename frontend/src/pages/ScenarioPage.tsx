@@ -39,13 +39,13 @@ export function ScenarioPage() {
 
   return (
     <main className="page">
-      <nav className="top-nav">
-        <Link to="/">Dashboard</Link>
-        <Link to="/courses">Courses</Link>
-        <Link to={`/diseases/${scenario.disease.id}`}>{scenario.disease.name}</Link>
-      </nav>
       <header className="page-header">
         <div>
+          <nav className="breadcrumb">
+            <Link to={`/diseases/${scenario.disease.id}`}>{scenario.disease.name}</Link>
+            <span className="breadcrumb-sep">/</span>
+            <span>Scenario</span>
+          </nav>
           <h1>{scenario.title}</h1>
           <p className="muted">Topic: {scenario.disease.name}</p>
         </div>

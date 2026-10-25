@@ -13,10 +13,31 @@ const STATUS_LABELS: Record<string, string> = {
   not_applicable: "N/A",
 };
 
-function ScoreCard({ label, score }: { label: string; score: number | null }) {
+function ScoreRing({ label, score }: { label: string; score: number | null }) {
+  const value = score !== null ? Math.round(score) : null;
+  const pct = value !== null ? Math.min(100, Math.max(0, value)) : 0;
+  const radius = 34;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - pct / 100);
+  const tone =
+    value === null ? "ring-none" : value >= 75 ? "ring-good" : value >= 50 ? "ring-mid" : "ring-low";
+
   return (
-    <div className="score-card">
-      <div className="score-value">{score !== null ? Math.round(score) : "—"}</div>
+    <div className={`score-card ${tone}`}>
+      <div className="score-ring-wrap">
+        <svg viewBox="0 0 80 80" className="score-ring" aria-hidden="true">
+          <circle className="score-ring-track" cx="40" cy="40" r={radius} />
+          <circle
+            className="score-ring-fill"
+            cx="40"
+            cy="40"
+            r={radius}
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+          />
+        </svg>
+        <div className="score-value">{value !== null ? value : "—"}</div>
+      </div>
       <div className="muted">{label}</div>
     </div>
   );
@@ -94,13 +115,13 @@ export function ReportPage() {
 
   return (
     <main className="page">
-      <nav className="top-nav">
-        <Link to="/">Dashboard</Link>
-        <Link to="/progress">Progress</Link>
-        <span>Report</span>
-      </nav>
       <header className="page-header">
         <div>
+          <nav className="breadcrumb">
+            <Link to="/progress">Progress</Link>
+            <span className="breadcrumb-sep">/</span>
+            <span>Report</span>
+          </nav>
           <h1>Encounter report</h1>
           <p className="muted">
             {report.scenario_title} · {report.mode} mode
@@ -111,11 +132,11 @@ export function ReportPage() {
       </header>
 
       <section className="score-row">
-        <ScoreCard label="Overall" score={report.overall_score} />
-        <ScoreCard label="History" score={report.history_score} />
-        <ScoreCard label="Communication" score={report.communication_score} />
-        <ScoreCard label="Reasoning" score={report.reasoning_score} />
-        <ScoreCard label="Diagnosis" score={report.diagnosis_score} />
+        <ScoreRing label="Overall" score={report.overall_score} />
+        <ScoreRing label="History" score={report.history_score} />
+        <ScoreRing label="Communication" score={report.communication_score} />
+        <ScoreRing label="Reasoning" score={report.reasoning_score} />
+        <ScoreRing label="Diagnosis" score={report.diagnosis_score} />
       </section>
 
       {report.diagnosis !== null && (

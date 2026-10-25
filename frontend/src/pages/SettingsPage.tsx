@@ -6,6 +6,7 @@ import {
   getLLMSettings,
   testLLMConnection,
   updateLLMSettings,
+  type LLMProvider,
   type LLMSettings,
   type ModelTestResult,
 } from "../api/settings";
@@ -18,6 +19,54 @@ const MODEL_FIELDS: Array<{ key: keyof LLMSettings; label: string; hint: string 
   { key: "feedback_model", label: "Feedback model", hint: "report narratives" },
 ];
 
+const PROVIDER_INFO: Record<
+  LLMProvider,
+  {
+    name: string;
+    blurb: string;
+    keyLabel: string;
+    keyPlaceholder: string;
+    keyHint: string;
+    modelPlaceholder: string;
+    recommended: Record<string, string>;
+    alternatives: string;
+  }
+> = {
+  anthropic: {
+    name: "Anthropic",
+    blurb: "Claude models — strongest reasoning for clinical extraction",
+    keyLabel: "Anthropic API key",
+    keyPlaceholder: "sk-ant-…",
+    keyHint: "console.anthropic.com",
+    modelPlaceholder: "e.g. claude-sonnet-4-5",
+    recommended: {
+      extraction_model: "claude-sonnet-4-5",
+      scenario_model: "claude-sonnet-4-5",
+      patient_model: "claude-sonnet-4-5",
+      scoring_model: "claude-sonnet-4-5",
+      feedback_model: "claude-sonnet-4-5",
+    },
+    alternatives: "claude-haiku-4-5 (faster, cheaper)",
+  },
+  groq: {
+    name: "Groq",
+    blurb: "LPU inference — extremely fast streaming, generous free tier",
+    keyLabel: "Groq API key",
+    keyPlaceholder: "gsk_…",
+    keyHint: "console.groq.com",
+    modelPlaceholder: "e.g. llama-3.3-70b-versatile",
+    recommended: {
+      extraction_model: "llama-3.3-70b-versatile",
+      scenario_model: "llama-3.3-70b-versatile",
+      patient_model: "llama-3.3-70b-versatile",
+      scoring_model: "llama-3.3-70b-versatile",
+      feedback_model: "llama-3.3-70b-versatile",
+    },
+    alternatives:
+      "llama-3.1-8b-instant (fastest), openai/gpt-oss-120b, moonshotai/kimi-k2-instruct, qwen/qwen3-32b",
+  },
+};
+
 export function SettingsPage() {
   const queryClient = useQueryClient();
   const settingsQuery = useQuery({
@@ -25,6 +74,7 @@ export function SettingsPage() {
     queryFn: getLLMSettings,
   });
 
+  const [provider, setProvider] = useState<LLMProvider>("anthropic");
   const [apiKey, setApiKey] = useState("");
   const [models, setModels] = useState<Record<string, string>>({});
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -32,6 +82,7 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (settingsQuery.data !== undefined) {
+      setProvider(settingsQuery.data.provider);
       const initial: Record<string, string> = {};
       for (const field of MODEL_FIELDS) {
         initial[field.key] = (settingsQuery.data[field.key] as string) ?? "";
@@ -42,7 +93,7 @@ export function SettingsPage() {
 
   const saveMutation = useMutation({
     mutationFn: () => {
-      const update: Record<string, string | boolean> = {};
+      const update: Record<string, string | boolean> = { provider };
       for (const [key, value] of Object.entries(models)) {
         update[key] = value;
       }
@@ -89,44 +140,82 @@ export function SettingsPage() {
   }
 
   const settings = settingsQuery.data;
+  const info = PROVIDER_INFO[provider];
+  const providerChanged = provider !== settings.provider;
 
   return (
     <main className="page">
-      <nav className="top-nav">
-        <Link to="/">Dashboard</Link>
-        <span>Settings</span>
-      </nav>
       <header className="page-header">
         <div>
           <h1>AI provider settings</h1>
           <p className="muted">
-            Create an API key in the Anthropic Console, paste it here, and set the model
-            names. Your key is encrypted at rest and never sent back to the browser.
+            Pick a provider, paste your API key, and set model names. Your key is
+            encrypted at rest and never sent back to the browser.
           </p>
         </div>
       </header>
 
       <form className="card settings-card" onSubmit={handleSubmit}>
+        <h2>Provider</h2>
+        <div className="provider-picker">
+          {(Object.keys(PROVIDER_INFO) as LLMProvider[]).map((key) => {
+            const item = PROVIDER_INFO[key];
+            const selected = provider === key;
+            return (
+              <button
+                type="button"
+                key={key}
+                className={`provider-option${selected ? " provider-option-selected" : ""}`}
+                onClick={() => setProvider(key)}
+              >
+                <span className="provider-name">{item.name}</span>
+                <span className="provider-blurb">{item.blurb}</span>
+              </button>
+            );
+          })}
+        </div>
+        {providerChanged && (
+          <p className="callout">
+            Switching provider clears your saved key — paste a {info.name} key below.
+          </p>
+        )}
+
         <h2>API key</h2>
         <p className="muted">
-          {settings.api_key_set
-            ? `A key is configured (${settings.api_key_source === "user" ? "your saved key" : "server environment"}). Enter a new key to replace it.`
-            : "No key configured yet."}
+          {settings.api_key_set && !providerChanged
+            ? `A ${info.name} key is configured (${
+                settings.api_key_source === "user" ? "your saved key" : "server environment"
+              }). Enter a new key to replace it.`
+            : providerChanged
+              ? `No ${info.name} key saved yet for this provider.`
+              : "No key configured yet."}
         </p>
         <label>
-          Anthropic API key
+          {info.keyLabel}
+          <span className="muted"> {info.keyHint}</span>
           <input
             type="password"
             value={apiKey}
             onChange={(event) => setApiKey(event.target.value)}
             placeholder={
-              settings.api_key_set ? "sk-ant-… (saved — leave blank to keep)" : "sk-ant-…"
+              settings.api_key_set && !providerChanged
+                ? `${info.keyPlaceholder} (saved — leave blank to keep)`
+                : info.keyPlaceholder
             }
             autoComplete="off"
           />
         </label>
 
-        <h2>Models</h2>
+        <div className="models-header">
+          <h2>Models</h2>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => setModels({ ...info.recommended })}
+          >
+            Use recommended
+          </button>
+        </div>
         {MODEL_FIELDS.map((field) => (
           <label key={field.key}>
             {field.label}
@@ -136,10 +225,13 @@ export function SettingsPage() {
               onChange={(event) =>
                 setModels((previous) => ({ ...previous, [field.key]: event.target.value }))
               }
-              placeholder="e.g. claude-sonnet-4-5"
+              placeholder={info.modelPlaceholder}
             />
           </label>
         ))}
+        <p className="muted">
+          Popular {info.name} models: {info.recommended.patient_model}, {info.alternatives}
+        </p>
 
         {saveMessage !== null && <p className="muted">{saveMessage}</p>}
 
@@ -171,6 +263,15 @@ export function SettingsPage() {
           </div>
         )}
       </form>
+
+      <p className="muted settings-footer-note">
+        Keys are encrypted with Fernet before storage. Need a Groq key? Create one free at{" "}
+        <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">
+          console.groq.com
+        </a>
+        .{" "}
+        <Link to="/progress">Back to progress</Link>
+      </p>
     </main>
   );
 }

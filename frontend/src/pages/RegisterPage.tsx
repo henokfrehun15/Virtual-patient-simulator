@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { AuthLayout } from "../app/AuthLayout";
 import { useAuth } from "../features/auth/AuthContext";
 
 export function RegisterPage() {
@@ -27,10 +28,10 @@ export function RegisterPage() {
   };
 
   return (
-    <main className="auth-page">
-      <h1>Virtual Patient Simulator</h1>
-      <form className="card" onSubmit={handleSubmit}>
+    <AuthLayout>
+      <form className="card auth-card" onSubmit={handleSubmit}>
         <h2>Create an account</h2>
+        <p className="muted">Start practicing clinical encounters in minutes.</p>
         <label>
           Full name
           <input value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
@@ -60,10 +61,10 @@ export function RegisterPage() {
         <button type="submit" disabled={submitting}>
           {submitting ? "Creating account…" : "Create account"}
         </button>
-        <p>
+        <p className="auth-switch">
           Already have an account? <Link to="/login">Sign in</Link>
         </p>
       </form>
-    </main>
+    </AuthLayout>
   );
 }

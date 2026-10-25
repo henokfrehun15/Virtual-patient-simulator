@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { Navigate, createBrowserRouter } from "react-router-dom";
 
 import { useAuth } from "../features/auth/AuthContext";
+import { AppShell } from "./AppShell";
 import { CoursePage } from "../pages/CoursePage";
 import { CoursesPage } from "../pages/CoursesPage";
 import { DashboardPage } from "../pages/DashboardPage";
@@ -23,7 +24,7 @@ function RequireAuth({ children }: { children: ReactElement }) {
   if (user === null) {
     return <Navigate to="/login" replace />;
   }
-  return children;
+  return <AppShell>{children}</AppShell>;
 }
 
 export const router = createBrowserRouter([

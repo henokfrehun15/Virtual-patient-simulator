@@ -1,5 +1,5 @@
 PROMPT_VERSION = "diagnosis_normalization:v1"
-MAX_TOKENS = 200
+MAX_TOKENS = 1000
 
 SYSTEM_PROMPT = """You are normalizing a medical student's diagnosis answer in an educational clinical simulation.
 

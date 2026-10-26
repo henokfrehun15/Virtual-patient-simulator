@@ -218,35 +218,34 @@ class OpenAICompatStream:
             ],
             "max_completion_tokens": self._max_tokens,
             "stream": True,
-            "stream_options": {"include_usage": True},
         }
-        try:
-            return self._client.chat.completions.create(**kwargs)
-        except openai.BadRequestError as exc:
-            if "stream_options" in str(exc).lower():
-                kwargs.pop("stream_options")
-                return self._create_guarded(**kwargs)
-            raise map_groq_status_error(exc) from exc
-        except openai.APIStatusError as exc:
-            raise map_groq_status_error(exc) from exc
-        except openai.APIConnectionError as exc:
-            raise ProviderError(
-                "Could not connect to the Groq API.",
-                error_code="LLM_TIMEOUT",
-                retryable=True,
-            ) from exc
-
-    def _create_guarded(self, **kwargs):
-        try:
-            return self._client.chat.completions.create(**kwargs)
-        except openai.APIStatusError as exc:
-            raise map_groq_status_error(exc) from exc
-        except openai.APIConnectionError as exc:
-            raise ProviderError(
-                "Could not connect to the Groq API.",
-                error_code="LLM_TIMEOUT",
-                retryable=True,
-            ) from exc
+        optional: dict = {
+            "stream_options": {"include_usage": True},
+            "reasoning_effort": "low",
+        }
+        while True:
+            kwargs.update(optional)
+            try:
+                return self._client.chat.completions.create(**kwargs)
+            except openai.BadRequestError as exc:
+                message = str(exc).lower()
+                dropped = False
+                for key in list(optional):
+                    if key in message:
+                        optional.pop(key)
+                        kwargs.pop(key, None)
+                        dropped = True
+                if dropped:
+                    continue
+                raise map_groq_status_error(exc) from exc
+            except openai.APIStatusError as exc:
+                raise map_groq_status_error(exc) from exc
+            except openai.APIConnectionError as exc:
+                raise ProviderError(
+                    "Could not connect to the Groq API.",
+                    error_code="LLM_TIMEOUT",
+                    retryable=True,
+                ) from exc
 
     def __iter__(self):
         stream = self._open_stream()

@@ -1,4 +1,5 @@
 import json
+import time
 
 import openai
 
@@ -9,7 +10,18 @@ logger = get_logger("app.llm.groq")
 
 GROQ_DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 
+RATE_LIMIT_MAX_RETRIES = 4
+RATE_LIMIT_DEFAULT_DELAY_SECONDS = 20.0
+
 _JSON_SCHEMA_UNSUPPORTED_MODELS: set[str] = set()
+
+
+def _retry_after_seconds(exc: openai.APIStatusError) -> float | None:
+    try:
+        value = exc.response.headers.get("retry-after")
+        return float(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def map_groq_status_error(exc: openai.APIStatusError) -> ProviderError:
@@ -19,6 +31,15 @@ def map_groq_status_error(exc: openai.APIStatusError) -> ProviderError:
             f"Groq rate limit (HTTP {status_code}).",
             error_code="LLM_RATE_LIMITED",
             retryable=True,
+            retry_after=_retry_after_seconds(exc),
+        )
+    if status_code == 413:
+        # Groq returns 413 when a request exceeds the tokens-per-minute budget.
+        return ProviderError(
+            "Groq tokens-per-minute limit exceeded for this request.",
+            error_code="LLM_RATE_LIMITED",
+            retryable=True,
+            retry_after=_retry_after_seconds(exc),
         )
     if status_code in (401, 403):
         return ProviderError(
@@ -76,6 +97,42 @@ class GroqProvider:
         return self._client.chat.completions.create(**kwargs)
 
     def complete(
+        self,
+        *,
+        model: str,
+        system: str,
+        user: str,
+        max_tokens: int,
+        json_schema: dict | None,
+    ) -> tuple[str, int | None, int | None]:
+        rate_limit_attempts = 0
+        while True:
+            try:
+                return self._complete_once(
+                    model=model,
+                    system=system,
+                    user=user,
+                    max_tokens=max_tokens,
+                    json_schema=json_schema,
+                )
+            except ProviderError as exc:
+                if (
+                    exc.error_code == "LLM_RATE_LIMITED"
+                    and rate_limit_attempts < RATE_LIMIT_MAX_RETRIES
+                ):
+                    rate_limit_attempts += 1
+                    delay = exc.retry_after or RATE_LIMIT_DEFAULT_DELAY_SECONDS
+                    logger.info(
+                        "groq_rate_limit_retry",
+                        attempt=rate_limit_attempts,
+                        delay_seconds=delay,
+                        model=model,
+                    )
+                    time.sleep(delay)
+                    continue
+                raise
+
+    def _complete_once(
         self,
         *,
         model: str,
@@ -210,6 +267,28 @@ class OpenAICompatStream:
         self.output_tokens: int | None = None
 
     def _open_stream(self):
+        rate_limit_attempts = 0
+        while True:
+            try:
+                return self._open_stream_once()
+            except ProviderError as exc:
+                if (
+                    exc.error_code == "LLM_RATE_LIMITED"
+                    and rate_limit_attempts < RATE_LIMIT_MAX_RETRIES
+                ):
+                    rate_limit_attempts += 1
+                    delay = exc.retry_after or RATE_LIMIT_DEFAULT_DELAY_SECONDS
+                    logger.info(
+                        "groq_rate_limit_retry",
+                        attempt=rate_limit_attempts,
+                        delay_seconds=delay,
+                        model=self._model,
+                    )
+                    time.sleep(delay)
+                    continue
+                raise
+
+    def _open_stream_once(self):
         kwargs: dict = {
             "model": self._model,
             "messages": [

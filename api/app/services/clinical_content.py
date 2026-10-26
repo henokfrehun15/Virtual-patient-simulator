@@ -185,6 +185,29 @@ def _batched(items: list, size: int) -> Iterator[list]:
         yield items[start : start + size]
 
 
+def _batched_within_budget(
+    chunks: list[DocumentChunk], max_count: int, max_chars: int
+) -> Iterator[list[DocumentChunk]]:
+    """Yield batches that respect both a chunk-count and a character budget.
+
+    The character budget keeps each LLM request inside provider
+    tokens-per-minute limits (Groq returns 413 when a single request
+    exceeds the account's TPM allowance).
+    """
+    batch: list[DocumentChunk] = []
+    chars = 0
+    for chunk in chunks:
+        chunk_chars = len(chunk.text)
+        if batch and (len(batch) >= max_count or chars + chunk_chars > max_chars):
+            yield batch
+            batch = []
+            chars = 0
+        batch.append(chunk)
+        chars += chunk_chars
+    if batch:
+        yield batch
+
+
 def _backfill_chunk_embeddings(db, chunks: list[DocumentChunk]) -> None:
     settings = get_settings()
     missing = [chunk for chunk in chunks if chunk.embedding is None]
@@ -209,7 +232,11 @@ def _discover_diseases(
     router = get_llm_router(owner_user_id)
     merged: dict[str, DiscoveredDisease] = {}
 
-    for batch in _batched(chunks, settings.discovery_chunks_per_call):
+    for batch in _batched_within_budget(
+        chunks,
+        max_count=settings.discovery_chunks_per_call,
+        max_chars=settings.discovery_batch_max_chars,
+    ):
         result = router.generate(
             "disease_extraction",
             LLMRequest(

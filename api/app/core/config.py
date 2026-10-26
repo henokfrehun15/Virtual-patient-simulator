@@ -54,8 +54,9 @@ class Settings(BaseSettings):
     ocr_min_text_chars: int = 40
     ocr_dpi: int = 150
     discovery_chunks_per_call: int = 40
+    discovery_batch_max_chars: int = 16000
     max_diseases_per_material: int = 50
-    profile_chunks_per_disease: int = 20
+    profile_chunks_per_disease: int = 12
     max_evidence_text_chars: int = 2000
     scenario_difficulties: str = "easy,medium,hard"
     scenario_estimated_duration_minutes: int = 15

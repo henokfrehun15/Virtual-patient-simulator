@@ -10,9 +10,16 @@ RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 529}
 
 
 class ProviderError(Exception):
-    def __init__(self, message: str, error_code: str, retryable: bool = False) -> None:
+    def __init__(
+        self,
+        message: str,
+        error_code: str,
+        retryable: bool = False,
+        retry_after: float | None = None,
+    ) -> None:
         self.error_code = error_code
         self.retryable = retryable
+        self.retry_after = retry_after
         super().__init__(message)
 
 

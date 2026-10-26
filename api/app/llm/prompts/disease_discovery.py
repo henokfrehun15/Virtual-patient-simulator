@@ -1,5 +1,5 @@
 PROMPT_VERSION = "disease_discovery:v1"
-MAX_TOKENS = 4096
+MAX_TOKENS = 2500
 
 SYSTEM_PROMPT = """You are a medical curriculum extraction system.
 

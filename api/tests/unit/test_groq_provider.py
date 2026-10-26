@@ -11,8 +11,12 @@ from app.llm.groq import GroqProvider
 from app.llm.provider import ProviderError
 
 
-def _http_response(status_code: int) -> httpx.Response:
-    return httpx.Response(status_code, request=httpx.Request("POST", "https://api.groq.com/t"))
+def _http_response(status_code: int, headers: dict | None = None) -> httpx.Response:
+    return httpx.Response(
+        status_code,
+        headers=headers or {},
+        request=httpx.Request("POST", "https://api.groq.com/t"),
+    )
 
 
 def _completion(text: str, prompt_tokens: int = 5, completion_tokens: int = 7):
@@ -164,13 +168,96 @@ def test_auth_error_mapping(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(ProviderError) as exc_info:
         provider.complete(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             system="system",
             user="user",
             max_tokens=64,
             json_schema=None,
         )
     assert exc_info.value.error_code == "LLM_AUTH_ERROR"
+
+
+def test_tpm_413_maps_to_retryable_rate_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(kwargs, call):
+        raise openai.APIStatusError(
+            "Request too large ... tokens per minute",
+            response=_http_response(413, headers={"retry-after": "18"}),
+            body={"message": "TPM"},
+        )
+
+    make_provider(monkeypatch, handler)
+    provider = GroqProvider(api_key="gsk_test", timeout_seconds=1, max_retries=0)
+
+    with pytest.raises(ProviderError) as exc_info:
+        provider.complete(
+            model="openai/gpt-oss-120b",
+            system="system",
+            user="user",
+            max_tokens=64,
+            json_schema=None,
+        )
+    assert exc_info.value.error_code == "LLM_RATE_LIMITED"
+    assert exc_info.value.retryable is True
+    assert exc_info.value.retry_after == 18.0
+
+
+def test_complete_retries_rate_limit_then_succeeds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sleeps: list[float] = []
+
+    def handler(kwargs, call):
+        if call == 1:
+            raise openai.APIStatusError(
+                "Request too large ... tokens per minute",
+                response=_http_response(413, headers={"retry-after": "5"}),
+                body=None,
+            )
+        return _completion('{"diseases": []}')
+
+    completions = make_provider(monkeypatch, handler)
+    monkeypatch.setattr(groq_module.time, "sleep", lambda seconds: sleeps.append(seconds))
+    provider = GroqProvider(api_key="gsk_test", timeout_seconds=1, max_retries=0)
+
+    text, _, _ = provider.complete(
+        model="openai/gpt-oss-120b",
+        system="system",
+        user="user",
+        max_tokens=64,
+        json_schema={"type": "object"},
+    )
+
+    assert json.loads(text) == {"diseases": []}
+    assert len(completions.calls) == 2
+    assert sleeps == [5.0]
+
+
+def test_complete_gives_up_after_max_rate_limit_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(kwargs, call):
+        raise openai.APIStatusError(
+            "Request too large ... tokens per minute",
+            response=_http_response(413, headers={"retry-after": "1"}),
+            body=None,
+        )
+
+    completions = make_provider(monkeypatch, handler)
+    monkeypatch.setattr(groq_module.time, "sleep", lambda seconds: None)
+    provider = GroqProvider(api_key="gsk_test", timeout_seconds=1, max_retries=0)
+
+    with pytest.raises(ProviderError) as exc_info:
+        provider.complete(
+            model="openai/gpt-oss-120b",
+            system="system",
+            user="user",
+            max_tokens=64,
+            json_schema=None,
+        )
+    assert exc_info.value.error_code == "LLM_RATE_LIMITED"
+    assert len(completions.calls) == groq_module.RATE_LIMIT_MAX_RETRIES + 1
 
 
 def test_stream_yields_deltas_and_usage(monkeypatch: pytest.MonkeyPatch) -> None:

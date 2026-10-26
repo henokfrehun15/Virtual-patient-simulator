@@ -1,5 +1,5 @@
 PROMPT_VERSION = "disease_profile:v1"
-MAX_TOKENS = 8000
+MAX_TOKENS = 4000
 
 SYSTEM_PROMPT = """You are a medical education content extraction system.
 

@@ -1,7 +1,15 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
+import { useAuth } from "../features/auth/AuthContext";
 import { getHistory } from "../api/reports";
+
+function greetingForNow(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
 
 const CARDS = [
   {
@@ -40,14 +48,16 @@ const CARDS = [
 ];
 
 export function DashboardPage() {
+  const { user } = useAuth();
   const historyQuery = useQuery({ queryKey: ["history"], queryFn: () => getHistory() });
   const completed = historyQuery.data?.items.length ?? 0;
+  const firstName = (user?.full_name ?? user?.email ?? "Doctor").split(" ")[0];
 
   return (
     <main className="page">
       <section className="hero">
         <h1>
-          Practice real <span className="hero-accent">clinical encounters</span>
+          {greetingForNow()}, <span className="hero-accent">{firstName}</span>
         </h1>
         <p className="muted">
           Interview AI patients, order examinations and investigations, submit your

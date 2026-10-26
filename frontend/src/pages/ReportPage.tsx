@@ -13,6 +13,35 @@ const STATUS_LABELS: Record<string, string> = {
   not_applicable: "N/A",
 };
 
+const VERDICT_META: Record<string, { title: string; icon: string }> = {
+  correct: { title: "Correct diagnosis", icon: "M20 6 9 17l-5-5" },
+  partial: { title: "Partially correct", icon: "M5 12h14" },
+  incorrect: { title: "Incorrect diagnosis", icon: "M18 6 6 18M6 6l12 12" },
+};
+
+function VerdictBanner({
+  verdict,
+  guess,
+}: {
+  verdict: string;
+  guess: string;
+}) {
+  const meta = VERDICT_META[verdict] ?? { title: verdict, icon: "M5 12h14" };
+  return (
+    <section className={`verdict-banner verdict-banner-${verdict}`}>
+      <span className="verdict-badge-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d={meta.icon} />
+        </svg>
+      </span>
+      <div>
+        <div className="verdict-title">{meta.title}</div>
+        <div className="muted">Your answer: {guess}</div>
+      </div>
+    </section>
+  );
+}
+
 function ScoreRing({ label, score }: { label: string; score: number | null }) {
   const value = score !== null ? Math.round(score) : null;
   const pct = value !== null ? Math.min(100, Math.max(0, value)) : 0;
@@ -99,7 +128,11 @@ export function ReportPage() {
   if (reportQuery.isLoading) {
     return (
       <main className="page">
-        <p className="muted">Loading report…</p>
+        <div className="skeleton skeleton-title" />
+        <div className="skeleton skeleton-row" style={{ width: "70%" }} />
+        <div className="skeleton skeleton-row" style={{ width: "55%" }} />
+        <div className="skeleton skeleton-row" style={{ width: "80%" }} />
+        <div className="skeleton skeleton-row" style={{ width: "45%" }} />
       </main>
     );
   }
@@ -140,20 +173,7 @@ export function ReportPage() {
       </section>
 
       {report.diagnosis !== null && (
-        <section className="section-block">
-          <h3>Diagnosis</h3>
-          <p className="kv">
-            <span>
-              Your answer: <strong>{report.diagnosis.guess}</strong>
-            </span>
-            <span>
-              Verdict:{" "}
-              <strong className={`verdict-${report.diagnosis.verdict}`}>
-                {report.diagnosis.verdict}
-              </strong>
-            </span>
-          </p>
-        </section>
+        <VerdictBanner verdict={report.diagnosis.verdict} guess={report.diagnosis.guess} />
       )}
 
       {report.critical_misses.length > 0 && (

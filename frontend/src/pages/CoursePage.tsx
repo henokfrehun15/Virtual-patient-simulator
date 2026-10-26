@@ -72,7 +72,10 @@ export function CoursePage() {
   if (courseQuery.isLoading) {
     return (
       <main className="page">
-        <p className="muted">Loading…</p>
+        <div className="skeleton skeleton-title" />
+        <div className="skeleton skeleton-row" style={{ width: "75%" }} />
+        <div className="skeleton skeleton-row" style={{ width: "60%" }} />
+        <div className="skeleton skeleton-row" style={{ width: "82%" }} />
       </main>
     );
   }

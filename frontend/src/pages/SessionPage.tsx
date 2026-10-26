@@ -12,6 +12,14 @@ import {
 } from "../api/sessions";
 import { useSessionStream } from "../hooks/useSessionStream";
 
+const OPENING_QUESTIONS = [
+  "What brings you in today?",
+  "When did your symptoms start?",
+  "Have you had any fever?",
+  "Can you describe the pain?",
+  "Has this happened before?",
+];
+
 function formatClock(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -217,8 +225,13 @@ export function SessionPage() {
 
   if (sessionQuery.isLoading) {
     return (
-      <main className="page">
-        <p className="muted">Loading…</p>
+      <main className="page session-page">
+        <div className="skeleton skeleton-title" />
+        <div className="skeleton skeleton-chat">
+          <div className="skeleton skeleton-bubble" />
+          <div className="skeleton skeleton-bubble skeleton-bubble-right" />
+          <div className="skeleton skeleton-bubble" />
+        </div>
       </main>
     );
   }
@@ -305,6 +318,22 @@ export function SessionPage() {
 
       {error !== null && <div className="session-error">{error}</div>}
       {actionError !== null && <div className="session-error">{actionError}</div>}
+
+      {isActive && messageCount === 0 && streamingMessage === null && (
+        <div className="quick-chips">
+          <span className="quick-chips-label">Try asking:</span>
+          {OPENING_QUESTIONS.map((question) => (
+            <button
+              type="button"
+              key={question}
+              className="chip-btn"
+              onClick={() => setDraft(question)}
+            >
+              {question}
+            </button>
+          ))}
+        </div>
+      )}
 
       {isActive && (
         <form className="composer" onSubmit={handleSubmit}>

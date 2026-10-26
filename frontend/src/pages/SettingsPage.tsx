@@ -54,16 +54,15 @@ const PROVIDER_INFO: Record<
     keyLabel: "Groq API key",
     keyPlaceholder: "gsk_…",
     keyHint: "console.groq.com",
-    modelPlaceholder: "e.g. llama-3.3-70b-versatile",
+    modelPlaceholder: "e.g. openai/gpt-oss-120b",
     recommended: {
-      extraction_model: "llama-3.3-70b-versatile",
-      scenario_model: "llama-3.3-70b-versatile",
-      patient_model: "llama-3.3-70b-versatile",
-      scoring_model: "llama-3.3-70b-versatile",
-      feedback_model: "llama-3.3-70b-versatile",
+      extraction_model: "openai/gpt-oss-120b",
+      scenario_model: "openai/gpt-oss-120b",
+      patient_model: "openai/gpt-oss-120b",
+      scoring_model: "openai/gpt-oss-120b",
+      feedback_model: "openai/gpt-oss-120b",
     },
-    alternatives:
-      "llama-3.1-8b-instant (fastest), openai/gpt-oss-120b, moonshotai/kimi-k2-instruct, qwen/qwen3-32b",
+    alternatives: "openai/gpt-oss-20b (faster), qwen/qwen3.8-27b, allam-2-7b",
   },
 };
 
